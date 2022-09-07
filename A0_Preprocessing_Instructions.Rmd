@@ -1,9 +1,10 @@
 ---
 title: "Assignment 1 - Data Cleaning - Instructions"
-author: "[FILL IN YOUR NAME]"
+author: "Geri, Natasha, Emilie, Marton, Jakob"
 date: "[FILL IN THE DATE]"
 output: html_document
 ---
+
 
 # Brushing up your code skills
 
@@ -71,7 +72,9 @@ Load the three data sets, after downloading them from dropbox and saving them in
 * Word data: https://www.dropbox.com/s/8ng1civpl2aux58/token_train.csv?dl=0
 
 ```{r}
-
+LU_train <- read_csv("LU_train.csv")
+demo_train <- read_csv("demo_train.csv")
+token_train <- read_csv("token_train.csv")
 ```
 
 Explore the 3 data sets (e.g. visualize them, summarize them, etc.). You will see that the data is messy, since the psychologist collected the demographic data, the linguist analyzed the length of utterance in May 2014 and the fumbling jack-of-all-trades analyzed the words several months later. 
