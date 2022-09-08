@@ -95,6 +95,15 @@ Tip: look through the chapter on data transformation in R for data science (http
 
 ```{r}
 
+parse_integer()
+gsub()
+
+
+clean_visit function(data, num){
+  filter(data, VISIT)
+}
+
+substring(LU_train$VISIT, 6,6)
 ```
 
 2b. Find a way to homogenize the way "visit" is reported (visit1 vs. 1).
