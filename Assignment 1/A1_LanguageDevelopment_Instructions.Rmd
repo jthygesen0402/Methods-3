@@ -81,9 +81,37 @@ Once the pipeline is in place, loop through different sample sizes to assess how
 BONUS questions for Part 1: what if the difference between ASD and TD was 0? how big of a sample size would you need? What about different effect sizes, and different error terms?
 
 ```{r}
+#Loading in packages
+pacman::p_load(tidyverse, brms)
+```
+
+```{r}
+#Simulating the data
+data_sim <- function(n, mean, beta){
+  df <- tibble(Diagnosis = rep(c("ASD", "TD"), each = n)) %>% 
+    mutate(Count = ifelse(Diagnosis == "ASD", rlnorm(n, meanlog = mean, sdlog = sd), rlnorm(n, meanlog = mean + beta, sdlog = sd))) %>% 
+    mutate(beta = beta , mean = mean, n = n)
+  
+  return(df)
+}
+
+
+data_sim(n = 10, mean = 10, beta = 5)
 
 ```
 
+
+```{r}
+#Loading in data
+df <- read_csv("data/data_clean.csv")
+
+glimpse(df)
+```
+
+```{r}
+#Defining the formula for a multi-level model with varying intercepts and varying slopes
+f1 <- bf(CHI_MLU~1+Diagnosis+(1+Diagnosis|Child.ID))
+```
 
 
 # Part 2 - Strong in the Bayesian ken, you are now ready to analyse the actual data
