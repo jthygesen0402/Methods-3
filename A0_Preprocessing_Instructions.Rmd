@@ -94,7 +94,12 @@ Tip: look through the chapter on data transformation in R for data science (http
 
 
 ```{r}
-
+demo_train <- demo_train %>% 
+              rename (SUBJ = Child.ID)
+  
+names(demo_train) <- toupper(names(demo_train))
+names(LU_train) <- toupper(names(LU_train))
+names(token_train) <- toupper(names(token_train))
 ```
 
 2b. Find a way to homogenize the way "visit" is reported (visit1 vs. 1).
@@ -103,8 +108,8 @@ Tip: The stringr package is what you need. str_extract () will allow you to extr
 
 
 ```{r}
-
-
+LU_train$VISIT <- parse_number(LU_train$VISIT)
+token_train$VISIT <- parse_number(token_train$VISIT)
 ```
 
 2c. We also need to make a small adjustment to the content of the Child.ID column in the demographic data. Within this column, names that are not abbreviations do not end with "." (i.e. Adam), which is the case in the other two data sets (i.e. Adam.). If The content of the two variables isn't identical the rows will not be merged.
@@ -115,7 +120,9 @@ Tip: You can either have one line of code for each child name that is to be chan
 
 
 ```{r}
-
+demo_train$SUBJ <- gsub("\\.","", demo_train$SUBJ) 
+LU_train$SUBJ <- gsub("\\.","\\", LU_train$SUBJ)
+token_train$SUBJ <- gsub("\\.","\\", token_train$SUBJ)
 ```
 
 2d. Now that the nitty gritty details of the different data sets are fixed, we want to make a subset of each data set only containig the variables that we wish to use in the final data set.
@@ -151,7 +158,26 @@ Most variables should make sense, here the less intuitive ones.
 Feel free to rename the variables into something you can remember (i.e. nonVerbalIQ, verbalIQ)
 
 ```{r}
+token_train_sub <- subset(token_train, select = -8) 
 
+
+LU_train_sub <- LU_train %>% 
+  select(SUBJ,
+         VISIT,
+         MOT_MLU,
+         CHI_MLU)
+
+demo_train_sub <- demo_train %>% 
+  select(SUBJ, 
+         VISIT, 
+         ETHNICITY, 
+         DIAGNOSIS, 
+         GENDER, 
+         AGE, 
+         ADOS, 
+         MULLENRAW,
+         EXPRESSIVELANGRAW,
+         SOCIALIZATION)
 ```
 
 2e. Finally we are ready to merge all the data sets into just one. 
@@ -161,6 +187,9 @@ Some things to pay attention to:
 * make sure to understand whether (and if so why) there are NAs in the data set (e.g. some measures were not taken at all visits, some recordings were lost or permission to use was withdrawn)
 
 ```{r}
+merged <- inner_join(LU_train_sub, token_train_sub)
+
+merged <- inner_join(merged, demo_train_sub)
 
 
 ```
