@@ -98,6 +98,18 @@ data_sim <- function(n, mean, beta){
 
 data_sim(n = 10, mean = 10, beta = 5)
 
+#Jakob's version
+data_sim <- function(n, mean, sd, beta, sdbeta){
+  df <- tibble(Diagnosis = rep(c("ASD", "TD"), each = n)) %>% 
+    mutate(MLU = ifelse(Diagnosis == "ASD", rlnorm(n, meanlog = mean, sdlog = sd), rlnorm(n, meanlog = mean + rnorm(1,mean=beta, sd=sdbeta), sdlog=sd))) %>% 
+    mutate(beta = beta , mean = mean, sd = sd, n = n)
+  
+  return(df)
+}
+
+
+data_sim(n = 10, mean = 1.5,sd=0.5, beta = 0.4, sdbeta = 0.4)
+
 ```
 
 
