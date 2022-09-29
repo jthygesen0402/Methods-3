@@ -86,30 +86,48 @@ pacman::p_load(tidyverse, brms)
 ```
 
 ```{r}
-#Simulating the data
-data_sim <- function(n, mean, beta){
-  df <- tibble(Diagnosis = rep(c("ASD", "TD"), each = n)) %>% 
-    mutate(Count = ifelse(Diagnosis == "ASD", rlnorm(n, meanlog = mean, sdlog = sd), rlnorm(n, meanlog = mean + beta, sdlog = sd))) %>% 
-    mutate(beta = beta , mean = mean, n = n)
+mu_ASD <- 1.5
+sd_ASD <- 0.5
+
+mu_TD <- 1.5
+sd_TD <- 0.3
+
+mu_change_ASD <- 0.4 #beta
+sigma_change_ASD <- 0.4 #sd_beta
+
+mu_change_TD <- 0.6
+sigma_change_TD <- 0.2
+error <- 0.2
+```
+
+
+```{r}
+# Simulating the data
+set.seed(6)
+
+simulation <- function(n){
+  d <- tibble(Diagnosis = rep(c("ASD", "TD"), each = n/2), ID= seq(n)) %>%
+    mutate(intercept=ifelse(Diagnosis=="ASD", rnorm(n, mean=mu_ASD, sd=sd_ASD), rnorm(n, mean=mu_TD, sd=sd_TD)), slope=ifelse(Diagnosis=="ASD", rnorm(n, mean=mu_change_ASD, sd=sigma_change_ASD), rnorm(n, mean=mu_change_ASD, sd=sigma_change_TD))) %>% 
+    sapply(rep,times=6) %>% 
+    as_tibble() %>% 
+    mutate(visit=rep(seq(6), each=n), intercept=as.numeric(intercept), slope=as.numeric(slope),MLU=NA) %>% 
+    arrange(ID)
   
-  return(df)
-}
-
-
-data_sim(n = 10, mean = 10, beta = 5)
-
-#Jakob's version
-data_sim <- function(n, mean, sd, beta, sdbeta){
-  df <- tibble(Diagnosis = rep(c("ASD", "TD"), each = n)) %>% 
-    mutate(MLU = ifelse(Diagnosis == "ASD", rlnorm(n, meanlog = mean, sdlog = sd), rlnorm(n, meanlog = mean + rnorm(1,mean=beta, sd=sdbeta), sdlog=sd))) %>% 
-    mutate(beta = beta , mean = mean, sd = sd, n = n)
+  for(i in seq(nrow(d))){
+    d$MLU[i] <- rlnorm(1, meanlog=d$intercept[i]+d$slope[i]*(d$visit[i]-1), sdlog=error)
+  }
   
-  return(df)
-}
+  return(d)
+    }
 
+df <- simulation(30)
 
-data_sim(n = 10, mean = 1.5,sd=0.5, beta = 0.4, sdbeta = 0.4)
-
+ggplot(df, aes(
+  visit, MLU, color = Diagnosis, group = ID
+)) +
+  theme_bw()+
+  geom_point()+
+  geom_line(alpha = 0.3)
 ```
 
 
