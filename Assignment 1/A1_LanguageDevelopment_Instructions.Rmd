@@ -82,7 +82,7 @@ BONUS questions for Part 1: what if the difference between ASD and TD was 0? how
 
 ```{r}
 #Loading in packages
-pacman::p_load(tidyverse, brms)
+pacman::p_load(tidyverse, brms, bayesplot, rstanarm, zoom)
 ```
 
 ```{r}
@@ -92,12 +92,12 @@ sd_ASD <- 0.5
 mu_TD <- 1.5
 sd_TD <- 0.3
 
-mu_change_ASD <- 0.4 #before 0.4 - beta
-sigma_change_ASD <- 0.035 #before 0.4 - sd_beta
+mu_change_ASD <- 0.4/1.5 #before 0.4 - beta
+sigma_change_ASD <- 0.4*(0.4/1.5) #before 0.4 - sd_beta
 
-mu_change_TD <- 0.6 #before 0.6
-sigma_change_TD <- 0.25 #before 0.2
-error <- 0.1 #before 0.2
+mu_change_TD <- 0.6/1.5 #before 0.6
+sigma_change_TD <- 0.2*(0.6/1.5) #before 0.2
+error <- 0.2 #before 0.2
 ```
 
 ```{r}
@@ -144,12 +144,13 @@ get_prior(data = df,
 #Defining the priors
 MLU_priors <- c(
   prior(normal(0,0.1), class = b),
-  prior(normal(0.41,0.035), class = b, coef = "diagnosisASD"),
-  prior(normal(0.41,0.25), class = b, coef = "diagnosisTD"),
-  prior(normal(0,0.1),class=b,coef="DiagnosisASD:Visit"),
-  prior(normal(0,0.1),class=b,coef="DiagnosisTD:Visit"),
+  prior(normal(0.41,0.1), class = b, coef = "diagnosisASD"),
+  prior(normal(0.41,0.08), class = b, coef = "diagnosisTD"),
+  #prior(normal(0,0.1),class=b,coef="DiagnosisASD:Visit"),
+  #prior(normal(0,0.1),class=b,coef="DiagnosisTD:Visit"),
   prior(normal(0,0.5), class = sd, coef = Intercept, group = ID),
-  prior(normal(0,0.1), class = sd, coef = visit, group = ID)
+  prior(normal(0,0.1), class = sd, coef = visit, group = ID),
+  prior(lkj(1),class="cor")
 )
 
 MLU_prior_model <-  brm(
@@ -167,9 +168,33 @@ MLU_prior_model <-  brm(
   )
 )
 
-pp_check(MLU_prior_model, ndraws=100)
+pp_check(MLU_prior_model, ndraws =100)
+
+```
+```{r}
+#Fitting the model
+MLU_2 <- brm(
+  f1,
+  data =df,
+  prior = MLU_priors,
+  sample_prior = T,
+  backend = "cmdstanr",
+  chains = 2,
+  cores = 2,
+  control = list(
+    adapt_delta = 0.99,
+    max_treedepth = 20
+  )
+)
+
+
+pp_check(MLU_2, ndraws = 100)
 ```
 
+```{r}
+#plotting this (conditional effect)
+plot(conditional_effects(MLU_2), points=T)
+```
 
 # Part 2 - Strong in the Bayesian ken, you are now ready to analyse the actual data
 
