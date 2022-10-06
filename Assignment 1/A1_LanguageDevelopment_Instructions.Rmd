@@ -190,11 +190,8 @@ MLU_2 <- brm(
   )
 )
 
-<<<<<<< HEAD
 MLU_2
 
-=======
->>>>>>> 068604c53c60c4514464977c8b140ce78dc998de
 #Posterior predictive check
 pp_check(MLU_2, ndraws = 100)
 ```
@@ -207,13 +204,7 @@ plot(MLU_2)
 #Divergences
 
 
-<<<<<<< HEAD
-=======
-#Rhat
 
-
-#Effective samples
->>>>>>> 068604c53c60c4514464977c8b140ce78dc998de
 ```
 
 
