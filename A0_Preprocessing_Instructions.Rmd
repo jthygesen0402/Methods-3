@@ -1,10 +1,15 @@
 Assignment 0
 ---
 title: "Assignment 1 - Data Cleaning - Instructions"
+<<<<<<< HEAD
 author: NATASHA K: JØRGENSEN
+=======
+author: "Geri, Natasha, Emilie, Marton, Jakob"
+>>>>>>> df49984552946e848566ff63ee9460a29558ccb2
 date: "[FILL IN THE DATE]"
 output: html_document
 ---
+
 
 # Brushing up your code skills
 
@@ -88,10 +93,16 @@ Load the three data sets, after downloading them from dropbox and saving them in
 * Word data: https://www.dropbox.com/s/8ng1civpl2aux58/token_train.csv?dl=0
 
 ```{r}
+<<<<<<< HEAD
 lu_train <- read.csv("lu_train.csv")
 demo_train <- read.csv("demo_train.csv", stringsAsFactors = T)
 token_train <- read.csv("token_train.csv", stringsAsFactors = T)
 
+=======
+LU_train <- read_csv("LU_train.csv")
+demo_train <- read_csv("demo_train.csv")
+token_train <- read_csv("token_train.csv")
+>>>>>>> df49984552946e848566ff63ee9460a29558ccb2
 ```
 Individual variability in group level
 Individual variability based on certain population variables 
@@ -155,6 +166,15 @@ demo_train$VISIT <- as.factor(demo_train$VISIT)
 lu_train$VISIT <- as.factor(lu_train$VISIT)
 token_train$VISIT <- as.factor(token_train$VISIT)
 
+parse_integer()
+gsub()
+
+
+clean_visit function(data, num){
+  filter(data, VISIT)
+}
+
+substring(LU_train$VISIT, 6,6)
 ```
 
 
