@@ -168,8 +168,8 @@ MLU_prior_model <-  brm(
   )
 )
 
+#Prior predictive check
 pp_check(MLU_prior_model, ndraws =100)
-
 ```
 
 
@@ -190,8 +190,24 @@ MLU_2 <- brm(
   )
 )
 
+#Posterior predictive check
 pp_check(MLU_2, ndraws = 100)
 ```
+
+```{r}
+#Model quality checks
+#Traceplots
+plot(MLU_2)
+
+#Divergences
+
+
+#Rhat
+
+
+#Effective samples
+```
+
 
 ```{r}
 #Sample the parameters of interest:
