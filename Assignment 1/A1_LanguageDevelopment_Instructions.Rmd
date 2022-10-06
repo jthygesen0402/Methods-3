@@ -168,43 +168,41 @@ MLU_prior_model <-  brm(
   )
 )
 
+#prior predictive check
 pp_check(MLU_prior_model, ndraws =100)
-
 ```
-```{r}
-#Sample the parameters of interest:
-Posterior_m1 <- as_draws_df(MLU_prior_model)
-
-plot(MLU_prior_model)
-
-#Plot the prior-posterior update plot for the intercept:
-ggplot(Posterior_m1) +
-geom_density(aes(prior_b_DiagnosisASD), fill="steelblue", color="black",alpha=0.6) +
-geom_density(aes(b_DiagnosisASD), fill="#FC4E07", color="black",alpha=0.6) +
-xlab('Intercept') +
-labs(title="Model 3") +
-theme_classic()
-```
-
 
 ```{r}
 #Fitting the model
-MLU_2 <- brm(
-  f1,
-  data =df,
-  prior = MLU_priors,
-  sample_prior = T,
-  backend = "cmdstanr",
-  chains = 2,
-  cores = 2,
-  control = list(
-    adapt_delta = 0.99,
-    max_treedepth = 20
-  )
-)
-
+MLU_m2 <-
+brm(
+MLU_f3,
+data = d,
+save_pars = save_pars(all = TRUE),
+family = lognormal,
+prior = MLU_p3,
+file = "MLU_m3",
+#refit = "on_change",
+sample_prior = T,
+iter = 5000,
+warmup = 1000,
+cores = 2,
+chains = 2,
+backend = "cmdstanr",
+threads = threading(2),
+control = list(
+adapt_delta = 0.99,
+max_treedepth = 15 ))
 
 pp_check(MLU_2, ndraws = 100)
+```
+
+
+```{r}
+#Traceplots
+plot(MLU_m2)
+
+#
 ```
 
 ```{r}
