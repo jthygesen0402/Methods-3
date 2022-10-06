@@ -171,20 +171,7 @@ MLU_prior_model <-  brm(
 pp_check(MLU_prior_model, ndraws =100)
 
 ```
-```{r}
-#Sample the parameters of interest:
-Posterior_m1 <- as_draws_df(MLU_prior_model)
 
-plot(MLU_prior_model)
-
-#Plot the prior-posterior update plot for the intercept:
-ggplot(Posterior_m1) +
-geom_density(aes(prior_b_DiagnosisASD), fill="steelblue", color="black",alpha=0.6) +
-geom_density(aes(b_DiagnosisASD), fill="#FC4E07", color="black",alpha=0.6) +
-xlab('Intercept') +
-labs(title="Model 3") +
-theme_classic()
-```
 
 
 ```{r}
@@ -203,8 +190,22 @@ MLU_2 <- brm(
   )
 )
 
-
 pp_check(MLU_2, ndraws = 100)
+```
+
+```{r}
+#Sample the parameters of interest:
+Posterior_m1 <- as_draws_df(MLU_2)
+
+plot(MLU_2)
+
+#Plot the prior-posterior update plot for the intercept:
+ggplot(Posterior_m1) +
+geom_density(aes(prior_b_diagnosisASD), fill="steelblue", color="black",alpha=0.6) +
+geom_density(aes(b_diagnosisASD), fill="#FC4E07", color="black",alpha=0.6) +
+xlab('Intercept') +
+labs(title="Model 3") +
+theme_classic()
 ```
 
 ```{r}
