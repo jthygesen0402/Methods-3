@@ -190,7 +190,8 @@ MLU_2 <- brm(
   )
 )
 
-MLU_2
+#Printing the model output
+print(MLU_2)
 
 #Posterior predictive check
 pp_check(MLU_2, ndraws = 100)
@@ -200,6 +201,7 @@ pp_check(MLU_2, ndraws = 100)
 #Model quality checks
 #Traceplots
 plot(MLU_2)
+
 
 #Divergences
 
@@ -256,8 +258,33 @@ grid.arrange(p1,p2,p3,p4,p5)
 ```{r}
 #plotting this (conditional effect)
 plot(conditional_effects(MLU_2), points=T)
+```
+
+```{r}
+#Precision analysis
+samplesizes <- c(30,40,50,60,70,80,90)
+
+s <-
+  tibble(samples = samplesizes) %>% 
+  mutate(d = map(samples, simulation)) %>% 
+  mutate(fit = map(d, ~update(MLU_2, newdata = .x)))
 
 ```
+
+```{r}
+parameters <-
+  s %>% 
+  mutate(treatment = map(fit, ~ fixef(.) %>% 
+                           data.frame() %>% 
+                           rownames_to_column("parameter"))) %>% 
+  unnest(treatment) %>% 
+  select(-d, -fit) %>% 
+  filter(parameter == c("diagnosisASD:visit", "diagnosisTD:visit"))
+
+
+
+```
+
 
 # Part 2 - Strong in the Bayesian ken, you are now ready to analyse the actual data
 
