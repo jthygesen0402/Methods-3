@@ -82,7 +82,7 @@ BONUS questions for Part 1: what if the difference between ASD and TD was 0? how
 
 ```{r}
 #Loading in packages
-pacman::p_load(tidyverse, brms, bayesplot, rstanarm, zoom)
+pacman::p_load(tidyverse, brms, bayesplot, rstanarm, zoom,gridExtra)
 ```
 
 ```{r}
@@ -190,6 +190,8 @@ MLU_2 <- brm(
   )
 )
 
+MLU_2
+
 #Posterior predictive check
 pp_check(MLU_2, ndraws = 100)
 ```
@@ -202,10 +204,7 @@ plot(MLU_2)
 #Divergences
 
 
-#Rhat
 
-
-#Effective samples
 ```
 
 
@@ -213,15 +212,45 @@ plot(MLU_2)
 #Sample the parameters of interest:
 Posterior_m1 <- as_draws_df(MLU_2)
 
-plot(MLU_2)
-
-#Plot the prior-posterior update plot for the intercept:
-ggplot(Posterior_m1) +
-geom_density(aes(prior_b_diagnosisASD), fill="steelblue", color="black",alpha=0.6) +
-geom_density(aes(b_diagnosisASD), fill="#FC4E07", color="black",alpha=0.6) +
+#The prior-posterior update plot for the intercept beta:
+p1 <- ggplot(Posterior_m1) +
+geom_histogram(aes(prior_b_diagnosisASD), fill="steelblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(b_diagnosisASD), fill="#FC4E07", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(b_diagnosisTD), fill = "green", color = "black", alpha=0.6, bins = 30)+
 xlab('Intercept') +
-labs(title="Model 3") +
+labs(title="Prior-posterior update check of the intercepts") +
 theme_classic()
+
+p2 <- ggplot(Posterior_m1) +
+geom_histogram(aes(prior_sd_ID__Intercept), fill="steelblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(sd_ID__Intercept), fill="#FC4E07", color="black",alpha=0.6, bins = 30) +
+xlab('Intercept') +
+labs(title="Prior-posterior update check variability of the intercept") +
+theme_classic()
+
+p3 <- ggplot(Posterior_m1) +
+geom_histogram(aes(`prior_b_diagnosisASD:visit`), fill="steelblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(`b_diagnosisASD:visit`), fill="#FC4E07", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(`b_diagnosisTD:visit`), fill = "green", color = "black", alpha=0.6, bins = 30)+
+xlab('Slope') +
+labs(title="Prior-posterior update check of the slopes by visit") +
+theme_classic()
+
+p4 <- ggplot(Posterior_m1) +
+geom_histogram(aes(prior_sd_ID__visit), fill="steelblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(sd_ID__visit), fill="#FC4E07", color="black",alpha=0.6, bins = 30) +
+xlab('Slope') +
+labs(title="Prior-posterior update check variability of the slopes") +
+theme_classic()
+
+p5 <- ggplot(Posterior_m1) +
+geom_histogram(aes(prior_cor_ID), fill="steelblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(cor_ID__Intercept__visit), fill="#FC4E07", color="black",alpha=0.6, bins = 30) +
+xlab('Correlation') +
+labs(title="Prior-posterior update check on the correlation") +
+theme_classic()
+
+grid.arrange(p1,p2,p3,p4,p5)
 ```
 
 ```{r}
