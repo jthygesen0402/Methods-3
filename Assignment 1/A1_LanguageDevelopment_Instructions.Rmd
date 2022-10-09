@@ -254,6 +254,10 @@ theme_classic()
 
 grid.arrange(p1,p2,p3,p4,p5)
 ```
+```{r}
+hypothesis(MLU_2, "diagnosisTD:visit > diagnosisASD:visit")
+```
+
 
 ```{r}
 #plotting this (conditional effect)
