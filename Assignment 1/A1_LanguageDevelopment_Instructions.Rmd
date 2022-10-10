@@ -160,6 +160,7 @@ MLU_prior_model <-  brm(
   prior = MLU_priors,
   sample_prior = "only",
   backend = "cmdstanr",
+  file = "MLU_prior_model",
   chains = 2,
   cores = 2,
   control = list(
