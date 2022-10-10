@@ -82,7 +82,7 @@ BONUS questions for Part 1: what if the difference between ASD and TD was 0? how
 
 ```{r}
 #Loading in packages
-pacman::p_load(tidyverse, brms, bayesplot, rstanarm, zoom,gridExtra)
+pacman::p_load(tidyverse, brms, bayesplot, rstanarm, gridExtra)
 ```
 
 ```{r}
@@ -294,12 +294,24 @@ parameters <-
 
 ```{r}
 #Loading in data
-df <- read_csv("data/data_clean.csv")
+df_real_data <- read_csv("data/data_clean.csv")
 
-glimpse(df)
+glimpse(df_real_data)
 ```
 
 - Describe your sample (n, age, gender, clinical and cognitive features of the two groups) and critically assess whether the groups (ASD and TD) are balanced. Briefly discuss whether the data is enough given the simulations in part 1.
+```{r}
+#mean age
+mean(df_real_data$Age, na.rm = TRUE)
+
+#gender
+female <- df_real_data %>% 
+  select(Child.ID, Gender) %>% 
+  group_by(Child.ID) %>% 
+  filter(Gender == "F")
+```
+
+
 - Describe linguistic development (in terms of MLU over time) in TD and ASD children (as a function of group). Discuss the difference (if any) between the two groups.
 - Describe individual differences in linguistic development: do all kids follow the same path? Are all kids reflected by the general trend for their group?
 
