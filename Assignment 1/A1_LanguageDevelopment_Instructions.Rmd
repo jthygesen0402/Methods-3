@@ -3,64 +3,6 @@ title: "Assignment 1 - Language development in autistic and neurotypical childre
 output: html_document
 date: "2022-08-15"
 ---
-```{r}
-remove.packages(c("StanHeaders","rstan"))
-install.packages("StanHeaders", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
-```
-
-
-```{r}
-install.packages("rstan", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
-```
-
-
-```{r}
-Sys.which("make")
-
-library(jsonlite)
-
-install.packages("jsonlite")
-
-rt_path = gsub("\\","/",pkgbuild::rtools_path(),fixed=T)
-rt_bin = paste0(substr(rt_path,1,nchar(rt_path)-4),"/mingw_$(WIN)/bin/")
-writeLines(paste0('PATH="',rt_path,';${PATH}"'), con = "~/.Renviron")
-writeLines(paste0('Sys.setenv(BINPREF = "',rt_bin,'")'), con = "~/.Rprofile")
-
-
-dotR <- file.path(Sys.getenv("HOME"), ".R")
-if (!file.exists(dotR)) dir.create(dotR)
-M <- file.path(dotR, "Makevars.win")
-if (!file.exists(M)) file.create(M)
-cat("\n CXX14FLAGS += -O3 -mmmx -msse -msse2 -msse3 -mssse3 -msse4.1 -msse4.2",
-    file = M, sep = "\n", append = FALSE)
-```
-
-
-```{r}
-library(rstan)
-example(stan_model,run.dontrun=TRUE,verbose=TRUE)
-```
-
-
-```{r}
-Sys.getenv("BINPREF")
-Sys.getenv("PATH")
-Sys.which("make")
-
-readLines("~/.Renviron")
-readLines("~/.Rprofile")
-file.path(Sys.getenv("HOME"), ".Rprofile")
-
-pkgbuild::rtools_path()
-
-
-Sys.setenv(PATH = paste("C:\\rtools42/usr/bin", Sys.getenv("PATH"), sep=";"))
-Sys.setenv(BINPREF = "")
-
-
-devtools::session_info("rstan")
-
-```
 
 # Assignment 1  - Language development in autistic and neurotypical children
 
@@ -136,14 +78,11 @@ BONUS questions for Part 1: what if the difference between ASD and TD was 0? how
 
 ```{r}
 #Loading in packages
-<<<<<<< HEAD
 pacman::p_load(tidyverse, brms, bayesplot, rstanarm, zoom,pak)
 pak::pak("tidyverse/tidyverse")
 library(tidyverse)
-=======
-pacman::p_load(tidyverse, brms, bayesplot, rstanarm, gridExtra)
->>>>>>> b1d06b5a89c5b1699bb58c8238975562ba040025
 ```
+
 
 ```{r}
 mu_ASD <- log(1.5)
@@ -159,6 +98,7 @@ mu_change_TD <- 0.6/1.5 #before 0.6
 sigma_change_TD <- 0.2*(0.6/1.5) #before 0.2
 error <- 0.2 #before 0.2
 ```
+
 
 ```{r}
 # Simulating the data
@@ -247,8 +187,7 @@ MLU_2 <- brm(
   data =df,
   prior = MLU_priors,
   sample_prior = T,
-  backend = "cmdstanr",
-  chains = 2,
+   chains = 2,
   cores = 2,
   control = list(
     adapt_delta = 0.99,
@@ -331,13 +270,12 @@ hypothesis(MLU_2, "diagnosisTD:visit > diagnosisASD:visit")
 plot(conditional_effects(MLU_2), points=T)
 ```
 
-<<<<<<< HEAD
-
 
 #Power analysis
 
 ## sample size of 60
 ```{r}
+#Number of iterations
 n_sim <- 10
 ```
 
@@ -353,8 +291,8 @@ pwr_sim_it <- function(seed, n){
     mutate(visit=rep(seq(6), each=n), intercept=as.numeric(intercept), slope=as.numeric(slope),MLU=NA) %>% 
     arrange(ID)
   
-  for(i in seq(nrow(d))){
-    d$MLU[i] <- rnorm(1, d$intercept[i]+d$slope[i]*(d$visit[i]-1), error)
+  for(i in seq(nrow(pwr))){
+    pwr$MLU[i] <- rnorm(1, pwr$intercept[i]+pwr$slope[i]*(pwr$visit[i]-1), error)
   }
   
   update(MLU_2,
@@ -365,22 +303,20 @@ pwr_sim_it <- function(seed, n){
     rownames_to_column("parameter") %>% 
     filter(parameter == "treatment")
 }
-    }
 
 ```
 
 
 ```{r}
-iterations <- tibble(seed = 1:n_sim) %>% 
-  mutate(b1 = map(seed, pwr_sim_it, n = 60)) %>% 
-  unnest(b1)
+iterations60 <- tibble(seed = 1:n_sim) %>% 
+  mutate(pwr = map(seed, pwr_sim_it, n = 60)) %>% 
+  unnest(pwr)
  
 ```
 
 ```{r}
 #Hopefully plotting the 10 iterations of a sample size of 60 children
-
-iterations %>% 
+iterations60 %>% 
  ggplot(aes(x = seed, y = Estimate, ymin = Q2.5, ymax = Q97.5)) +
   geom_hline(yintercept = c(0, .5), color = "white") +
   geom_pointrange(fatten = 1/2) +
@@ -392,32 +328,14 @@ iterations %>%
 
 ## Sample size of 70
 ```{r}
-n_sim <- 10
-df70 <- simulation(3,70)
-
-#Our data simulation function is used here
-
-pwr_sim <- tibble(seed = 1:n_sim) %>% 
-  mutate(df = map(seed, simulation, n = 70)) %>% 
-  mutate(MLU_2 = map2(df70, seed, ~update(MLU_2, newdata = .x, seed = .y)))
+iterations70 <- tibble(seed = 1:n_sim) %>% 
+  mutate(pwr = map(seed, pwr_sim_it, n = 70)) %>% 
+  unnest(pwr)
 ```
 
 ```{r}
-#Extracting the parameters
-parameters <- pwr_sim %>% 
-  mutate(treatment = map(MLU_2, ~ fixef(.) %>% 
-                           data.frame() %>%
-                           rownames_to_column("parameter"))) %>% 
-  unnest(treatment)
-```
-
-```{r}
-#Hopefully plotting the 10 iterations of a sample size of 60 children
-
-parameters %>% 
-  #filter(parameter == "ASD") %>% 
-  
-  ggplot(aes(x = seed, y = Estimate, ymin = Q2.5, ymax = Q97.5)) +
+iterations70 %>% 
+ ggplot(aes(x = seed, y = Estimate, ymin = Q2.5, ymax = Q97.5)) +
   geom_hline(yintercept = c(0, .5), color = "white") +
   geom_pointrange(fatten = 1/2) +
   labs(x = "seed (i.e., simulation index)",
@@ -425,11 +343,18 @@ parameters %>%
 ```
 
 ```{r}
-parameters %>% 
-  filter(parameter == "treatment") %>% 
-  mutate(check = ifelse(Q2.5 > 0, 1, 0)) %>% 
-  summarise(power = mean(check))
-=======
+#Extracting the parameters
+parameters <- pwr_sim_it %>% 
+  mutate(treatment = map(MLU_2, ~ fixef(.) %>% 
+                           data.frame() %>%
+                           rownames_to_column("parameter"))) %>% 
+  unnest(treatment)
+```
+
+
+
+Precision Analysis???
+
 ```{r}
 #Precision analysis
 samplesizes <- c(30,40,50,60,70,80,90)
@@ -451,21 +376,15 @@ parameters <-
   select(-d, -fit) %>% 
   filter(parameter == c("diagnosisASD:visit", "diagnosisTD:visit"))
 
-
-
->>>>>>> b1d06b5a89c5b1699bb58c8238975562ba040025
 ```
+
 
 
 # Part 2 - Strong in the Bayesian ken, you are now ready to analyse the actual data
 
 ```{r}
 #Loading in data
-<<<<<<< HEAD
 real_df <- read_csv("data/data_clean.csv")
-=======
-df_real_data <- read_csv("data/data_clean.csv")
->>>>>>> b1d06b5a89c5b1699bb58c8238975562ba040025
 
 glimpse(df_real_data)
 ```
