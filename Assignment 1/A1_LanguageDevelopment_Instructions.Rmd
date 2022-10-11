@@ -429,7 +429,9 @@ parameters %>%
   filter(parameter == "treatment") %>% 
   mutate(check = ifelse(Q2.5 > 0, 1, 0)) %>% 
   summarise(power = mean(check))
-=======
+```
+
+
 ```{r}
 #Power analysis
 
