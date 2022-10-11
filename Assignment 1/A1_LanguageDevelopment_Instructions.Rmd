@@ -356,6 +356,93 @@ parameters <- pwr_sim_it %>%
 Precision Analysis???
 
 ```{r}
+#Power analysis
+
+## sample size of 60
+n_sim <- 10
+
+
+#Our data simulation function is used here
+pwr_sim_it <- function(seed, n){
+  set.seed(seed)
+  pwr <- tibble(diagnosis = rep(c("ASD", "TD"), each = n/2), ID= seq(n)) %>%
+    mutate(intercept=ifelse(diagnosis=="ASD", rlnorm(n, meanlog=mu_ASD, sdlog=sd_ASD), rlnorm(n, meanlog=mu_TD, sdlog=sd_TD)), slope=ifelse(diagnosis=="ASD", rnorm(n, mean=mu_change_ASD, sd=sigma_change_ASD), rnorm(n, mean=mu_change_ASD, sd=sigma_change_TD))) %>% 
+    sapply(rep,times=6) %>% 
+    as_tibble() %>% 
+    mutate(visit=rep(seq(6), each=n), intercept=as.numeric(intercept), slope=as.numeric(slope),MLU=NA) %>% 
+    arrange(ID)
+  
+  for(i in seq(nrow(d))){
+    d$MLU[i] <- rnorm(1, d$intercept[i]+d$slope[i]*(d$visit[i]-1), error)
+  }
+  
+  update(MLU_2,
+         newdata = pwr, 
+         seed = seed) %>% 
+    fixef() %>% 
+    data.frame() %>% 
+    rownames_to_column("parameter") %>% 
+    filter(parameter == "treatment")
+}
+    }
+
+
+
+iterations <- tibble(seed = 1:n_sim) %>% 
+  mutate(b1 = map(seed, pwr_sim_it, n = 60)) %>% 
+  unnest(b1)
+ 
+
+#Hopefully plotting the 10 iterations of a sample size of 60 children
+
+iterations %>% 
+ ggplot(aes(x = seed, y = Estimate, ymin = Q2.5, ymax = Q97.5)) +
+  geom_hline(yintercept = c(0, .5), color = "white") +
+  geom_pointrange(fatten = 1/2) +
+  labs(x = "seed (i.e., simulation index)",
+       y = expression(beta[1]))
+
+
+
+## Sample size of 70
+n_sim <- 10
+df70 <- simulation(3,70)
+
+#Our data simulation function is used here
+
+pwr_sim <- tibble(seed = 1:n_sim) %>% 
+  mutate(df = map(seed, simulation, n = 70)) %>% 
+  mutate(MLU_2 = map2(df70, seed, ~update(MLU_2, newdata = .x, seed = .y)))
+
+#Extracting the parameters
+parameters <- pwr_sim %>% 
+  mutate(treatment = map(MLU_2, ~ fixef(.) %>% 
+                           data.frame() %>%
+                           rownames_to_column("parameter"))) %>% 
+  unnest(treatment)
+
+#Hopefully plotting the 10 iterations of a sample size of 60 children
+
+parameters %>% 
+  #filter(parameter == "ASD") %>% 
+  
+  ggplot(aes(x = seed, y = Estimate, ymin = Q2.5, ymax = Q97.5)) +
+  geom_hline(yintercept = c(0, .5), color = "white") +
+  geom_pointrange(fatten = 1/2) +
+  labs(x = "seed (i.e., simulation index)",
+       y = expression(beta[1]))
+```
+
+
+```{r}
+parameters %>% 
+  filter(parameter == "treatment") %>% 
+  mutate(check = ifelse(Q2.5 > 0, 1, 0)) %>% 
+  summarise(power = mean(check))
+```
+
+
+```{r}
 #Precision analysis
 samplesizes <- c(30,40,50,60,70,80,90)
 
