@@ -186,7 +186,7 @@ MLU_priors <- c(
 MLU_prior_model <-  brm(
   f1,
   data = df,
-  family = lognormal,
+  family = lognormal(),
   prior = MLU_priors,
   sample_prior = "only",
   #backend = "cmdstanr",
@@ -199,7 +199,7 @@ MLU_prior_model <-  brm(
 )
 
 #Prior predictive check
-pp_check(MLU_prior_model, ndraws =100)
+pp_check(MLU_prior_model, ndraws =100) + coord_cartesian(xlim = c(-1, 60))
 ```
 
 
@@ -209,7 +209,7 @@ pp_check(MLU_prior_model, ndraws =100)
 MLU_2 <- brm(
   f1,
   data =df,
-  family = gaussian,
+  family = lognormal,
   prior = MLU_priors,
     sample_prior = T,
    chains = 2,
