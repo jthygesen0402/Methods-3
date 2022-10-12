@@ -4,45 +4,45 @@ output: html_document
 date: "2022-08-15"
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
 # Assignment 1  - Language development in autistic and neurotypical children
 
 ## Quick recap
 Autism Spectrum Disorder is often related to language impairment. However, this phenomenon has rarely been empirically traced in detail: i) relying on actual naturalistic language production, ii) over extended periods of time.
 
-We therefore videotaped circa 30 kids with ASD and circa 30 comparison kids (matched by linguistic performance at visit 1) for ca. 30 minutes of naturalistic interactions with a parent. We repeated the data collection 6 times per kid, with 4 months between each visit. We transcribed the data and counted: 
-i) the amount of words that each kid uses in each video. Same for the parent.
-ii) the amount of unique words that each kid uses in each video. Same for the parent.
-iii) the amount of morphemes per utterance (Mean Length of Utterance) displayed by each child in each video. Same for the parent. 
+We therefore videotaped circa 30 kids with ASD and circa 30 comparison kids (matched by linguistic performance at visit 1) for ca. 30 minutes of naturalistic interactions with a parent. We repeated the data collection 6 times per kid, with 4 months between each visit. 
+We transcribed the data and counted: 
+*i) the amount of words that each kid uses in each video. Same for the parent.*
+*ii) the amount of unique words that each kid uses in each video. Same for the parent.*
+*iii) the amount of morphemes per utterance (Mean Length of Utterance) displayed by each child in each video. Same for the parent. *
 
 This data is in the file you prepared in the previous class, but you can also find it here:https://www.dropbox.com/s/d6eerv6cl6eksf3/data_clean.csv?dl=0
 
 
-## The structure of the assignment
+
+## The structure of the assignment ##
 
 We will be spending a few weeks with this assignment. In particular, we will:
 
-Part 1) simulate data in order to better understand the model we need to build, and to better understand how much data we would have to collect to run a meaningful study (precision analysis)
+  Part 1) simulate data in order to better understand the model we need to build, and to better understand how much data we would have to collect to run a meaningful study (precision analysis)
 
-Part 2) analyze our empirical data and interpret the inferential results
+  Part 2) analyze our empirical data and interpret the inferential results
 
-Part 3) use your model to predict the linguistic trajectory of new children and assess the performance of the model based on that.
+  Part 3) use your model to predict the linguistic trajectory of new children and assess the performance of the model based on that.
+  
 
 As you work through these parts, you will have to produce a written document (separated from the code) answering the following questions:
 
-Q1 - Briefly describe your simulation process, its goals, and what you have learned from the simulation. Add at least a plot showcasing the results of the simulation. Make a special note on sample size considerations: how much data do you think you will need? what else could you do to increase the precision of your estimates?
+*Q1* - Briefly describe your simulation process, its goals, and what you have learned from the simulation. Add at least a plot showcasing the results of the simulation. Make a special note on sample size considerations: how much data do you think you will need? what else could you do to increase the precision of your estimates?
 
-Q2 - Briefly describe the empirical data and how they compare to what you learned from the simulation (what can you learn from them?). Briefly describe your model(s) and model quality. Report the findings: how does development differ between autistic and neurotypical children (N.B. remember to report both population and individual level findings)? which additional factors should be included in the model? Add at least one plot showcasing your findings.
+*Q2* - Briefly describe the empirical data and how they compare to what you learned from the simulation (what can you learn from them?). Briefly describe your model(s) and model quality. Report the findings: how does development differ between autistic and neurotypical children (N.B. remember to report both population and individual level findings)? Which additional factors should be included in the model? Add at least one plot showcasing your findings.
 
-Q3 - Given the model(s) from Q2, how well do they predict the data? Discuss both in terms of absolute error in training vs testing; and in terms of characterizing the new kids' language development as typical or in need of support.
+*Q3* - Given the model(s) from Q2, how well do they predict the data? Discuss both in terms of absolute error in training vs testing; and in terms of characterizing the new kids' language development as typical or in need of support.
+
 
 
 Below you can find more detailed instructions for each part of the assignment.
 
-## Part 1 - Simulating data
+## Part 1 - Simulating data ##
 
 Before we even think of analyzing the data, we should make sure we understand the problem, and we plan the analysis. To do so, we need to simulate data and analyze the simulated data (where we know the ground truth).
 
@@ -78,39 +78,61 @@ Remember the usual bayesian workflow:
 
 Once the pipeline is in place, loop through different sample sizes to assess how much data you would need to collect. N.B. for inspiration on how to set this up, check the tutorials by Kurz that are linked in the syllabus.
 
-BONUS questions for Part 1: what if the difference between ASD and TD was 0? how big of a sample size would you need? What about different effect sizes, and different error terms?
+*BONUS questions for Part 1*: what if the difference between ASD and TD was 0? how big of a sample size would you need? What about different effect sizes, and different error terms?
+
 
 ```{r}
 #Loading in packages
-pacman::p_load(tidyverse, brms, bayesplot, rstanarm, zoom)
+pacman::p_load(tidyverse, brms, bayesplot, rstanarm, zoom, pak, gridExtra, purrr)
+
+pak::pak("tidyverse/tidyverse")
+library(tidyverse)
+library(brms)
 ```
 
 ```{r}
+color_scheme_set(scheme = "pink")
+```
+
+
+```{r}
+#Log-scaling the intercepts 
 mu_ASD <- log(1.5)
 sd_ASD <- log(1.5)-log(1.5-0.5)
 
 mu_TD <- log(1.5)
 sd_TD <- log(1.5)-log(1.5-0.3)
 
+#Readjusting the slopes
 mu_change_ASD <- 0.4/1.5 #before 0.4 - beta
 sigma_change_ASD <- 0.4*(0.4/1.5) #before 0.4 - sd_beta
 
 mu_change_TD <- 0.6/1.5 #before 0.6
 sigma_change_TD <- 0.2*(0.6/1.5) #before 0.2
-error <- 0.2 #before 0.2
+error <- 0.2 
 ```
+
 
 ```{r}
 # Simulating the data
 set.seed(3)
 
 simulation <- function(n){
-  d <- tibble(diagnosis = rep(c("ASD", "TD"), each = n/2), ID= seq(n)) %>%
-    mutate(intercept=ifelse(diagnosis=="ASD", rlnorm(n, meanlog=mu_ASD, sdlog=sd_ASD), rlnorm(n, meanlog=mu_TD, sdlog=sd_TD)), slope=ifelse(diagnosis=="ASD", rnorm(n, mean=mu_change_ASD, sd=sigma_change_ASD), rnorm(n, mean=mu_change_ASD, sd=sigma_change_TD))) %>% 
+  d <- tibble(diagnosis = rep(c("ASD", "TD"), 
+                              each = n/2), ID= seq(n)) %>%
+    mutate(intercept=ifelse(diagnosis=="ASD", 
+                            rlnorm(n, meanlog=mu_ASD, sdlog=sd_ASD),
+                            rlnorm(n, meanlog=mu_TD, sdlog=sd_TD)), 
+           slope=ifelse(diagnosis=="ASD", 
+                        rnorm(n, mean=mu_change_ASD, sd=sigma_change_ASD), 
+                        rnorm(n, mean=mu_change_ASD, sd=sigma_change_TD))) %>% 
     sapply(rep,times=6) %>% 
     as_tibble() %>% 
-    mutate(visit=rep(seq(6), each=n), intercept=as.numeric(intercept), slope=as.numeric(slope),MLU=NA) %>% 
+    mutate(visit=rep(seq(6), each=n),
+           intercept=as.numeric(intercept), 
+           slope=as.numeric(slope),MLU=NA) %>% 
     arrange(ID)
+  
   
   for(i in seq(nrow(d))){
     d$MLU[i] <- rnorm(1, d$intercept[i]+d$slope[i]*(d$visit[i]-1), error)
@@ -119,11 +141,16 @@ simulation <- function(n){
   return(d)
     }
 
+
 df <- simulation(60)
 
+```
+
+
+Plotting the simulated data
+```{r}
 ggplot(df, aes(
-  visit, MLU, color = diagnosis, group = ID
-)) +
+  visit, MLU, color = diagnosis, group = ID)) +
   theme_bw()+
   geom_point()+
   geom_line(alpha = 0.3)
@@ -133,25 +160,28 @@ ggplot(df, aes(
 ```{r}
 #Defining the formula for a multi-level model with varying intercepts and varying slopes
 f1 <- bf(MLU~0+diagnosis+diagnosis:visit+(1+visit|ID))
+```
 
+
+```{r}
 #Getting the priors
 get_prior(data = df,
           family = gaussian,
           f1)
 ```
 
+
 ```{r}
 #Defining the priors
 MLU_priors <- c(
-  prior(normal(0,0.2), class = b),
-  prior(normal(0.41,0.107), class = b, coef = "diagnosisASD"),
-  prior(normal(0.41,0.08), class = b, coef = "diagnosisTD"),
-  #prior(normal(0,0.2),class=b,coef="DiagnosisASD:Visit"),
-  #prior(normal(0,0.2),class=b,coef="DiagnosisTD:Visit"),
-  prior(normal(0,0.5), class = sd, coef = Intercept, group = ID),
-  prior(normal(0,0.2), class = sd, coef = visit, group = ID),
-  prior(lkj(1),class="cor")
-)
+  brms::prior(normal(0,0.2), class = b),
+  brms::prior(normal(0.4,0.10), class = b, coef = "diagnosisASD"),
+  brms::prior(normal(0.4,0.05), class = b, coef = "diagnosisTD"),
+  brms::prior(normal(0,0.5), class = sd, coef = "Intercept", group = ID),
+  brms::prior(normal(0,0.2), class = sd, coef = "visit", group = ID),
+  brms::prior(lkj(1),class="cor"))
+
+
 
 MLU_prior_model <-  brm(
   f1,
@@ -159,8 +189,7 @@ MLU_prior_model <-  brm(
   family = gaussian,
   prior = MLU_priors,
   sample_prior = "only",
-  backend = "cmdstanr",
-  file = "MLU_prior_model",
+  #backend = "cmdstanr",
   chains = 2,
   cores = 2,
   control = list(
@@ -180,10 +209,10 @@ pp_check(MLU_prior_model, ndraws =100)
 MLU_2 <- brm(
   f1,
   data =df,
+  family = gaussian,
   prior = MLU_priors,
-  sample_prior = T,
-  backend = "cmdstanr",
-  chains = 2,
+    sample_prior = T,
+   chains = 2,
   cores = 2,
   control = list(
     adapt_delta = 0.99,
@@ -191,56 +220,200 @@ MLU_2 <- brm(
   )
 )
 
+
+#Printing the model output
+print(MLU_2)
+
 #Posterior predictive check
 pp_check(MLU_2, ndraws = 100)
 ```
+
 
 ```{r}
 #Model quality checks
 #Traceplots
 plot(MLU_2)
-
-#Divergences
-
-
-#Rhat
-
-
-#Effective samples
 ```
 
-
+Plotting the prior-posterior update checks
 ```{r}
 #Sample the parameters of interest:
 Posterior_m1 <- as_draws_df(MLU_2)
 
-plot(MLU_2)
-
-#Plot the prior-posterior update plot for the intercept:
-ggplot(Posterior_m1) +
-geom_density(aes(prior_b_diagnosisASD), fill="steelblue", color="black",alpha=0.6) +
-geom_density(aes(b_diagnosisASD), fill="#FC4E07", color="black",alpha=0.6) +
+#The prior-posterior update plot for the intercept beta:
+p1 <- ggplot(Posterior_m1) +
+geom_histogram(aes(prior_b_diagnosisASD), fill="steelblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(b_diagnosisASD), fill="#FC4E07", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(b_diagnosisTD), fill = "green", color = "black", alpha=0.6, bins = 30)+
 xlab('Intercept') +
-labs(title="Model 3") +
+labs(title="Prior-posterior update check of the intercepts") +
 theme_classic()
+
+p2 <- ggplot(Posterior_m1) +
+geom_histogram(aes(prior_sd_ID__Intercept), fill="steelblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(sd_ID__Intercept), fill="#FC4E07", color="black",alpha=0.6, bins = 30) +
+xlab('Intercept') +
+labs(title="Prior-posterior update check variability of the intercept") +
+theme_classic()
+
+p3 <- ggplot(Posterior_m1) +
+geom_histogram(aes(`prior_b_diagnosisASD:visit`), fill="steelblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(`b_diagnosisASD:visit`), fill="#FC4E07", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(`b_diagnosisTD:visit`), fill = "green", color = "black", alpha=0.6, bins = 30)+
+xlab('Slope') +
+labs(title="Prior-posterior update check of the slopes by visit") +
+theme_classic()
+
+p4 <- ggplot(Posterior_m1) +
+geom_histogram(aes(prior_sd_ID__visit), fill="steelblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(sd_ID__visit), fill="#FC4E07", color="black",alpha=0.6, bins = 30) +
+xlab('Slope') +
+labs(title="Prior-posterior update check variability of the slopes") +
+theme_classic()
+
+p5 <- ggplot(Posterior_m1) +
+geom_histogram(aes(prior_cor_ID), fill="steelblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(cor_ID__Intercept__visit), fill="#FC4E07", color="black",alpha=0.6, bins = 30) +
+xlab('Correlation') +
+labs(title="Prior-posterior update check on the correlation") +
+theme_classic()
+
+grid.arrange(p1,p2,p3,p4,p5)
 ```
+
+
+```{r}
+hypothesis(MLU_2, "diagnosisTD:visit > diagnosisASD:visit")
+```
+
 
 ```{r}
 #plotting this (conditional effect)
+## Posterior MLU effects averaged across groups
 plot(conditional_effects(MLU_2), points=T)
+```
+
+
+
+#Power analysis
+
+## sample size of 60
+```{r}
+#Number of simulations
+n_sim <- 20
+```
+
+```{r}
+pacman::p_load(tidyverse)
+pak::pak("tidyverse/tidyverse")
+
+sample60 <- tibble(seed = 1:n_sim) %>%
+  mutate(d = map(seed, simulation, n = 60))%>% 
+  mutate(fit = map2(d, seed, ~update(MLU_2, newdata = .x, seed = .y, iter=10)))
+
+parameters <- mutate(estimate = map(MLU_2, ~ fixef(.) %>% 
+                           data.frame() %>%
+                           rownames_to_column("parameter"))) %>% unnest(estimate)
+```
+
+
+```{r}
+#Plotting the 10 iterations of a sample size of 60 children
+sample60 %>% 
+ ggplot(aes(x = seed, y = Estimate, ymin = Q2.5, ymax = Q97.5)) +
+  geom_hline(yintercept = c(0, .5), color = "white") +
+  geom_pointrange(fatten = 1/2) +
+  labs(x = "seed (i.e., simulation index)",
+       y = expression(beta[1]))
+```
+
+
+
+## Sample size of 70
+```{r}
+sample70 <- tibble(seed = 1:n_sim) %>%
+  mutate(d = map(seed, simulation, n = 60))%>% 
+  mutate(fit = map2(d, seed, ~update(MLU_2, newdata = .x, seed = .y, iter=10))) %>% 
+  mutate(estimate = map(MLU_2, ~ fixef(.) %>% 
+                           data.frame() %>%
+                           rownames_to_column("parameter"))) %>% unnest(estimate)
+```
+
+```{r}
+sample70 %>% 
+ ggplot(aes(x = seed, y = Estimate, ymin = Q2.5, ymax = Q97.5)) +
+  geom_hline(yintercept = c(0, .5), color = "white") +
+  geom_pointrange(fatten = 1/2) +
+  labs(x = "seed (i.e., simulation index)",
+       y = expression(beta[1]))
+```
+
+
+
+
+```{r}
+parameters %>% 
+  filter(parameter == "treatment") %>% 
+  mutate(check = ifelse(Q2.5 > 0, 1, 0)) %>% 
+  summarise(power = mean(check))
+```
+
+
+
+Precision analysis
+
+```{r}
+#Precision analysis
+samplesizes <- c(30,40,50,60,70,80,90)
+
+s <-
+  tibble(samples = samplesizes) %>% 
+  mutate(d = map(samples, simulation)) %>% 
+  mutate(fit = map(d, ~update(MLU_2, newdata = .x)))
 
 ```
 
-# Part 2 - Strong in the Bayesian ken, you are now ready to analyse the actual data
+```{r}
+parameters <-
+  s %>% 
+  mutate(treatment = map(fit, ~ fixef(.) %>% 
+                           data.frame() %>% 
+                           rownames_to_column("parameter"))) %>% 
+  unnest(treatment) %>% 
+  select(-d, -fit) %>% 
+  filter(parameter == c("diagnosisASD:visit", "diagnosisTD:visit"))
+
+```
+
+
+
+## Part 2 - Strong in the Bayesian ken, you are now ready to analyse the actual data ##
 
 ```{r}
 #Loading in data
-df <- read_csv("data/data_clean.csv")
-
-glimpse(df)
+df_real_data <- read_csv("data/data_clean.csv")
+glimpse(df_real_data)
 ```
 
 - Describe your sample (n, age, gender, clinical and cognitive features of the two groups) and critically assess whether the groups (ASD and TD) are balanced. Briefly discuss whether the data is enough given the simulations in part 1.
+```{r}
+#mean child age in years
+(mean(df_real_data$Age, na.rm = TRUE))/12 
+
+
+#gender
+female <- df_real_data %>% 
+  select(Child.ID, Gender) %>% 
+  group_by(Child.ID) %>% 
+  filter(Gender == "F")
+
+df_real_data %>%  
+  filter(Gender=="F") %>% 
+  group_by(Child.ID) %>% summarise()
+
+```
+
+
 - Describe linguistic development (in terms of MLU over time) in TD and ASD children (as a function of group). Discuss the difference (if any) between the two groups.
 - Describe individual differences in linguistic development: do all kids follow the same path? Are all kids reflected by the general trend for their group?
 
