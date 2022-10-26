@@ -60,8 +60,8 @@ for (i in seq(studies_n)) {
   d$effect_mu[i] <- mean(sampling)
   d$effect_sigma[i] <- sd(sampling)/sqrt(d$participants[i])
   d$published[i] <- ifelse(abs(d$effect_mu[i])-abs(d$effect_sigma[i]*2) > 0,
-                           rbinom(1,1,0.9),
-                           rbinom(1,1,0.1))
+                           rbinom(1,1,0.9), #if significant effect then 90% chance of getting published 
+                           rbinom(1,1,0.1)) #if not significant effect then 10% chance of getting published 
 }
 ```
 
