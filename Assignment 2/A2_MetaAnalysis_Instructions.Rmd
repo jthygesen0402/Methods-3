@@ -17,7 +17,7 @@ install.packages("cmdstanr", repos = c("https://mc-stan.org/r-packages/", getOpt
 library(cmdstanr)
 
 set.seed(3)
-color_scheme_set(scheme = "pink")
+color_scheme_set(scheme = "viridisC")
 ```
 
 
@@ -150,6 +150,7 @@ m1_posterior <- as_draws_df(m1)
 p1 <- ggplot(m1_posterior) +
 geom_histogram(aes(prior_Intercept), fill="steelblue", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(b_Intercept), fill="#FC4E07", color="black",alpha=0.6, bins = 30) +
+geom_vline(xintercept = 0.4, size=2)+
 xlab('Intercept') +
 labs(title="Prior-posterior update check of the effect size") +
 theme_classic()
@@ -157,6 +158,7 @@ theme_classic()
 p2 <- ggplot(m1_posterior) +
 geom_histogram(aes(prior_sd_study), fill="steelblue", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(sd_study__Intercept), fill="#FC4E07", color="black",alpha=0.6, bins = 30) +
+geom_vline(xintercept = 0.4, size=2)+
 xlab('Intercept') +
 labs(title="Prior-posterior update check standard error of the effect size") +
 theme_classic()
