@@ -47,8 +47,8 @@ d <- tibble(
   study= seq(studies_n),
   participants= round(rtnorm(studies_n, studies_mu,studies_sigma,lower=studies_min)),
   study_effect=rnorm(studies_n, effect_mean,effect_sd),
-  effect_mu=NA,
-  effect_sigma=NA,
+  est_effectsize=NA,
+  est_se=NA,
   published=NA
 )
 ```
@@ -59,7 +59,7 @@ for (i in seq(studies_n)) {
   sampling <- rnorm(d$participants[i],d$study_effect[i],error_sigma)
   d$est_effectsize[i] <- mean(sampling)
   d$est_se[i] <- sd(sampling)/sqrt(d$participants[i])
-  d$published[i] <- ifelse(abs(d$effect_mu[i])-abs(d$effect_sigma[i]*2) > 0,
+  d$published[i] <- ifelse(abs(d$est_effectsize[i])-abs(d$est_se[i]*2) > 0,
                            rbinom(1,1,0.9),
                            rbinom(1,1,0.1))
 }
@@ -67,7 +67,7 @@ for (i in seq(studies_n)) {
 
 ```{r}
 #Defining the formula for the model
-f1 <- bf(effect_mu|se(effect_sigma)~1+(1|study))
+f1 <- bf(est_effectsize|se(est_se)~1+(1|study))
 ```
 
 ```{r}
@@ -81,8 +81,8 @@ get_prior(data = d,
 ```{r}
 #Setting priors
 p1 <- c(
-  prior(normal(0,0.3,class=Intercept)),
-  prior(normal(0,0.3,class=sd)))
+  prior(normal(0,0.3),class=Intercept),
+  prior(normal(0,0.3),class=sd))
 ```
 
 ```{r}
@@ -104,6 +104,9 @@ m1_prior <-brm(
 )
 ```
 
+```{r}
+pp_check(m1_prior, ndraws =1000)
+```
 
 2. What is the current evidence for distinctive vocal patterns in schizophrenia? 
 Use the data from Parola et al (2020) - https://www.dropbox.com/s/0l9ur0gaabr80a8/Matrix_MetaAnalysis_Diagnosis_updated290719.xlsx?dl=0 - focusing on pitch variability (PITCH_F0SD).  Describe the data available (studies, participants). Using the model from question 1 analyze the data, visualize and report the findings: population level effect size; how well studies reflect it; influential studies, publication bias. 
