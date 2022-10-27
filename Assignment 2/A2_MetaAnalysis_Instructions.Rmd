@@ -12,9 +12,11 @@ knitr::opts_chunk$set(echo = TRUE)
 # Assignment 2: meta-analysis
 
 ```{r}
-pacman::p_load(tidyverse,msm, brms)
-install.packages("cmdstanr", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
+pacman::p_load(tidyverse,msm, brms, gridExtra, bayesplot, rstanarm)
 library(cmdstanr)
+
+set.seed(3)
+color_scheme_set(scheme = "viridisC")
 ```
 
 
@@ -45,10 +47,10 @@ studies_min <- 10
 #We make a dataframe with the number of studies and the number of participants - and prepare it for future data
 d <- tibble(
   study= seq(studies_n),
-  participants= round(rtnorm(studies_n, 20,10,lower=10)),
+  participants= round(rtnorm(studies_n, studies_mu,studies_sigma,lower=studies_min)),
   study_effect=rnorm(studies_n, effect_mean,effect_sd),
-  effect_mu=NA,
-  effect_sigma=NA,
+  est_effectsize=NA,
+  est_se=NA,
   published=NA
 )
 ```
@@ -62,12 +64,17 @@ for (i in seq(studies_n)) {
   d$published[i] <- ifelse(abs(d$effect_mu[i])-abs(d$effect_sigma[i]*2) > 0,
                            rbinom(1,1,0.9), #if significant effect then 90% chance of getting published 
                            rbinom(1,1,0.1)) #if not significant effect then 10% chance of getting published 
+  d$est_effectsize[i] <- mean(sampling)
+  d$est_se[i] <- sd(sampling)/sqrt(d$participants[i])
+  d$published[i] <- ifelse(abs(d$est_effectsize[i])-abs(d$est_se[i]*2) > 0,
+                           rbinom(1,1,0.9),
+                           rbinom(1,1,0.1))
 }
 ```
 
 ```{r}
 #Defining the formula for the model
-f1 <- bf(effect_mu|se(effect_sigma)~1+(1|study))
+f1 <- bf(est_effectsize|se(est_se)~1+(1|study))
 ```
 
 ```{r}
@@ -81,8 +88,8 @@ get_prior(data = d,
 ```{r}
 #Setting priors
 p1 <- c(
-  prior(normal(0,0.3,class=Intercept)),
-  prior(normal(0,0.3,class=sd)))
+  prior(normal(0,0.3),class=Intercept),
+  prior(normal(0,0.3),class=sd))
 ```
 
 ```{r}
@@ -93,17 +100,77 @@ m1_prior <-brm(
   family = gaussian,
   prior = p1,
   sample_prior = "only",
-  backend = "cmdstanr",
+  threads = threading(2),
+  chains = 2,
+  cores = 2,
+  control = list(
+    adapt_delta = 0.9,
+    max_treedepth = 20)
+)
+```
+geom_vline
+Posterior estimate check of the model with vline
+```{r}
+#Prior predictive check
+pp_check(m1_prior, ndraws =1000)
+```
+Compare the estimate with the true value - plot, or whatever
+```{r}
+#Fitting the model
+m1 <-brm(
+  f1,
+  data=d,
+  family = gaussian,
+  prior = p1,
+  sample_prior = T,
+  #backend = "cmdstanr",
   threads = threading(2),
   chains = 2,
   cores = 2,
   control = list(
     adapt_delta = 0.9,
     max_treedepth = 20),
-  stan_model_args = list(stanc_options=list("01"))
+  #stan_model_args = list(stanc_options=list("01"))
 )
 ```
 
+```{r}
+#Printing the model
+print(m1)
+```
+
+```{r}
+#Posterior predictive check
+pp_check(m1, ndraws = 1000)
+```
+
+```{r}
+# Plotting the prior-posterior update checks
+
+#Sample the parameters of interest:
+m1_posterior <- as_draws_df(m1)
+
+#The prior-posterior update plot for the intercept beta:
+p1 <- ggplot(m1_posterior) +
+geom_histogram(aes(prior_b_Intercept), fill="steelblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(b_Intercept), fill="#FC4E07", color="black",alpha=0.6, bins = 30) +
+xlab('Intercept') +
+labs(title="Prior-posterior update check of the intercept") +
+theme_classic()
+
+
+p2 <- ggplot(m1_posterior) +
+geom_histogram(aes(prior_sd_study__Intercept), fill="steelblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(sd_study__Intercept), fill="#FC4E07", color="black",alpha=0.6, bins = 30) +
+xlab('Intercept') +
+labs(title="Prior-posterior update check variability of the intercept") +
+theme_classic()
+
+plot(p1)
+plot(p2)
+
+grid.arrange(p1,p2)
+```
 
 2. What is the current evidence for distinctive vocal patterns in schizophrenia? 
 Use the data from Parola et al (2020) - https://www.dropbox.com/s/0l9ur0gaabr80a8/Matrix_MetaAnalysis_Diagnosis_updated290719.xlsx?dl=0 - focusing on pitch variability (PITCH_F0SD).  Describe the data available (studies, participants). Using the model from question 1 analyze the data, visualize and report the findings: population level effect size; how well studies reflect it; influential studies, publication bias. 
@@ -113,7 +180,7 @@ BONUS question: assess the effect of task on the estimates (model comparison wit
 # Question 1
 
 ```{r}
-
+?geom_vline
 ```
 
 ## Question 2
