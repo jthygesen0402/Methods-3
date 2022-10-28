@@ -12,7 +12,10 @@ knitr::opts_chunk$set(echo = TRUE)
 # Assignment 2: meta-analysis
 
 ```{r}
-pacman::p_load(tidyverse,msm, brms, gridExtra, bayesplot, rstanarm)
+pacman::p_load(tidyverse,msm, brms, gridExtra, bayesplot, rstanarm,)
+
+install.packages("cmdstanr", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
+
 library(cmdstanr)
 
 set.seed(3)
@@ -152,24 +155,31 @@ m1_posterior <- as_draws_df(m1)
 
 #The prior-posterior update plot for the intercept beta:
 p1 <- ggplot(m1_posterior) +
-geom_histogram(aes(prior_b_Intercept), fill="steelblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(prior_Intercept), fill="steelblue", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(b_Intercept), fill="#FC4E07", color="black",alpha=0.6, bins = 30) +
+geom_vline(xintercept = 0.4, size=2)+
 xlab('Intercept') +
-labs(title="Prior-posterior update check of the intercept") +
+labs(title="Prior-posterior update check of the effect size") +
 theme_classic()
 
 
 p2 <- ggplot(m1_posterior) +
-geom_histogram(aes(prior_sd_study__Intercept), fill="steelblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(prior_sd_study), fill="steelblue", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(sd_study__Intercept), fill="#FC4E07", color="black",alpha=0.6, bins = 30) +
+geom_vline(xintercept = 0.4, size=2)+
 xlab('Intercept') +
-labs(title="Prior-posterior update check variability of the intercept") +
+labs(title="Prior-posterior update check standard error of the effect size") +
 theme_classic()
 
-plot(p1)
-plot(p2)
-
 grid.arrange(p1,p2)
+```
+
+```{r}
+m2_w_pb <- update(m1, newdata = subset(d, published==1))
+
+pp_check(m2_w_pb,ndraws = 1000)
+
+print(m2_w_pb)
 ```
 
 2. What is the current evidence for distinctive vocal patterns in schizophrenia? 
