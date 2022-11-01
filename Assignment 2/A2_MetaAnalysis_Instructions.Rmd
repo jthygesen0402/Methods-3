@@ -14,9 +14,9 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 pacman::p_load(tidyverse,msm, brms, gridExtra, bayesplot, rstanarm, readxl)
 
-#install.packages("cmdstanr", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
+install.packages("cmdstanr", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
 
-#library(cmdstanr)
+library(cmdstanr)
 ```
 
 
@@ -102,6 +102,7 @@ m1_prior <-brm(
   family = gaussian,
   prior = p1,
   sample_prior = "only",
+  backend = "cmdstanr",
   threads = threading(2),
   chains = 2,
   cores = 2,
@@ -125,14 +126,14 @@ m1 <-brm(
   family = gaussian,
   prior = p1,
   sample_prior = T,
-  #backend = "cmdstanr",
+  backend = "cmdstanr",
   threads = threading(2),
   chains = 2,
   cores = 2,
   control = list(
     adapt_delta = 0.9,
     max_treedepth = 20),
-  #stan_model_args = list(stanc_options=list("01"))
+  stan_model_args = list(stanc_options=list("01"))
 )
 ```
 
@@ -153,7 +154,7 @@ pp_check(m1, ndraws = 1000)
 m1_posterior <- as_draws_df(m1)
 
 #The prior-posterior update plot for the intercept beta:
-p1 <- ggplot(m1_posterior) +
+plot1 <- ggplot(m1_posterior) +
 geom_histogram(aes(prior_Intercept), fill="darkblue", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(b_Intercept), fill="orange", color="black",alpha=0.6, bins = 30) +
 geom_vline(xintercept = 0.4, size=2, color="darkgray")+
@@ -162,7 +163,7 @@ labs(title="Prior-posterior update check of the effect size") +
 theme_classic()
 
 
-p2 <- ggplot(m1_posterior) +
+plot2 <- ggplot(m1_posterior) +
 geom_histogram(aes(prior_sd_study), fill="darkblue", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(sd_study__Intercept), fill="orange", color="black",alpha=0.6, bins = 30) +
 geom_vline(xintercept = 0.4, size=2, color="darkgray")+
@@ -170,11 +171,25 @@ xlab('Intercept') +
 labs(title="Prior-posterior update check standard error of the effect size") +
 theme_classic()
 
-grid.arrange(p1,p2)
+grid.arrange(plot1,plot2)
 ```
 
 ```{r}
-m2_w_pb <- update(m1, newdata = subset(d, published==1))
+m2_w_pb <-brm(
+  f1,
+  data=subset(d, published==1),
+  family = gaussian,
+  prior = p1,
+  sample_prior = T,
+  backend = "cmdstanr",
+  threads = threading(2),
+  chains = 2,
+  cores = 2,
+  control = list(
+    adapt_delta = 0.9,
+    max_treedepth = 20),
+  stan_model_args = list(stanc_options=list("01"))
+)
 
 print(m2_w_pb)
 
@@ -219,7 +234,7 @@ head(real_data$SAMPLE_SIZE_TOTAL)
 
 ```{r}
 #Filtering out the unnecessary data
-real_data_pitch <- real_data %>% 
+real_data_pitch <- real_data %>% drop_na(PITCH_F0SD_HC_M)
 
 ```
 
@@ -243,4 +258,12 @@ ggplot(real_data, aes( y=SAMPLE_SIZE_TOTAL, x=StudyID)) +
 
 
 ```
+
+```{r}
+real_data_pitch <- mutate(real_data, effect_size=NA)
+for (i in seq(length(real_data_pitch))) {
+  real_data_pitch$effect_size[i] <- (real_data_pitch$PITCH_F0SD_HC_M[i]-real_data_pitch$PITCH_F0SD_SZ_M[i])/sqrt((real_data_pitch$PITCH_F0SD_HC_SD[i]^2+real_data_pitch$PITCH_F0SD_SZ_M[i]^2)/2)
+}
+```
+
 
