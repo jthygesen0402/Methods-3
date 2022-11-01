@@ -219,7 +219,7 @@ head(real_data$SAMPLE_SIZE_TOTAL)
 
 ```{r}
 #Filtering out the unnecessary data
-real_data_pitch <- real_data %>% 
+real_data_pitch <- real_data %>% drop_na(PITCH_F0SD_HC_M)
 
 ```
 
@@ -241,6 +241,15 @@ ggplot(real_data, aes( y=SAMPLE_SIZE_TOTAL, x=StudyID)) +
     theme_ipsum() +
     xlab("")
 
+
+```
+
+Population effects
+```{r}
+pacman::p_load(effectsize)
+for (i in real_data_pitch){
+  (real_data_pitch$PITCH_F0_HC_M[i]-real_data_pitch$PITCH_F0_SZ_M)/sd_pooled(real_data_pitch$PITCH_F0_SZ_SD)
+}
 
 ```
 
