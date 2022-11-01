@@ -1,0 +1,246 @@
+---
+title: "Assignment 2 - Meta-analysis of pitch in schizophrenia"
+author: "Riccardo Fusaroli"
+date: "16/8/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Assignment 2: meta-analysis
+
+```{r}
+pacman::p_load(tidyverse,msm, brms, gridExtra, bayesplot, rstanarm, readxl)
+
+#install.packages("cmdstanr", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
+
+#library(cmdstanr)
+```
+
+
+```{r}
+set.seed(3)
+color_scheme_set(scheme = "viridisC")
+```
+
+
+## Questions to be answered
+
+1. Simulate data to setup the analysis and gain insight on the structure of the problem. Simulate one dataset of 100 studies (n of participants should follow a normal distribution with mean of 20, sd of 10, but no fewer than 10 participants), with a mean effect size of 0.4 (means of studies), average deviation by study of .4 (average in means of studies) and measurement error of .8 (this is the standard deviation of the single participants). The data you get should have one row per study, with an effect size mean and standard error. Build a proper bayesian model to analyze the simulated data (1+(1|Study)). Then simulate publication bias (only some of the studies you simulate are likely to be published, which?) (studies that have an effect size that are less than two standard deviations from 0 are not likely to be published), the effect of publication bias on your estimates (re-run the model on published studies, assess the difference), and discuss what this implies for your model. remember to use at least one plot to visualize your results. 
+
+BONUS question: do a power/precision analysis: w this kind of sample sizes (participants) how many studies would you need to acquire good precision (e.g. .1 sd in the pop level estimate)
+
+```{r}
+#We set the values of the studies
+
+effect_mean <- 0.4
+effect_sd <- 0.4
+error_sigma <- 0.8
+```
+
+```{r}
+#We set the number of studies (and other parameters)
+
+studies_n <- 100
+studies_mu <- 20
+studies_sigma <- 10
+studies_min <- 10
+```
+
+
+```{r}
+#We make a dataframe with the number of studies and the number of participants - and prepare it for future data
+d <- tibble(
+  study= seq(studies_n),
+  participants= round(rtnorm(studies_n, studies_mu,studies_sigma,lower=studies_min)),
+  study_effect=rnorm(studies_n, effect_mean,effect_sd),
+  est_effectsize=NA,
+  est_se=NA,
+  published=NA
+)
+```
+
+```{r}
+#We sample the participants and fill in the effect sizes of the studies
+for (i in seq(studies_n)) {
+  sampling <- rnorm(d$participants[i],d$study_effect[i],error_sigma)
+  d$est_effectsize[i] <- mean(sampling)
+  d$est_se[i] <- sd(sampling)/sqrt(d$participants[i])
+  d$published[i] <- ifelse(abs(d$est_effectsize[i])-abs(d$est_se[i]*2) > 0,
+                           rbinom(1,1,0.9), #if significant effect then 90% chance of getting published 
+                           rbinom(1,1,0.1)) #if not significant effect then 10% chance of getting published 
+}
+```
+
+```{r}
+#Defining the formula for the model
+f1 <- bf(est_effectsize|se(est_se)~1+(1|study))
+```
+
+```{r}
+#Inspecting priors
+get_prior(data = d,
+          family = gaussian,
+          f1)
+```
+
+
+```{r}
+#Setting priors
+p1 <- c(
+  prior(normal(0,0.3),class=Intercept),
+  prior(normal(0,0.3),class=sd))
+```
+
+```{r}
+#Setting up the model
+m1_prior <-brm(
+  f1,
+  data=d,
+  family = gaussian,
+  prior = p1,
+  sample_prior = "only",
+  threads = threading(2),
+  chains = 2,
+  cores = 2,
+  control = list(
+    adapt_delta = 0.9,
+    max_treedepth = 20)
+)
+```
+geom_vline
+Posterior estimate check of the model with vline
+```{r}
+#Prior predictive check
+pp_check(m1_prior, ndraws =1000)
+```
+Compare the estimate with the true value - plot, or whatever
+```{r}
+#Fitting the model
+m1 <-brm(
+  f1,
+  data=d,
+  family = gaussian,
+  prior = p1,
+  sample_prior = T,
+  #backend = "cmdstanr",
+  threads = threading(2),
+  chains = 2,
+  cores = 2,
+  control = list(
+    adapt_delta = 0.9,
+    max_treedepth = 20),
+  #stan_model_args = list(stanc_options=list("01"))
+)
+```
+
+```{r}
+#Printing the model
+print(m1)
+```
+
+```{r}
+#Posterior predictive check
+pp_check(m1, ndraws = 1000)
+```
+
+```{r}
+# Plotting the prior-posterior update checks
+
+#Sample the parameters of interest:
+m1_posterior <- as_draws_df(m1)
+
+#The prior-posterior update plot for the intercept beta:
+p1 <- ggplot(m1_posterior) +
+geom_histogram(aes(prior_Intercept), fill="darkblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(b_Intercept), fill="orange", color="black",alpha=0.6, bins = 30) +
+geom_vline(xintercept = 0.4, size=2, color="darkgray")+
+xlab('Intercept') +
+labs(title="Prior-posterior update check of the effect size") +
+theme_classic()
+
+
+p2 <- ggplot(m1_posterior) +
+geom_histogram(aes(prior_sd_study), fill="darkblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(sd_study__Intercept), fill="orange", color="black",alpha=0.6, bins = 30) +
+geom_vline(xintercept = 0.4, size=2, color="darkgray")+
+xlab('Intercept') +
+labs(title="Prior-posterior update check standard error of the effect size") +
+theme_classic()
+
+grid.arrange(p1,p2)
+```
+
+```{r}
+m2_w_pb <- update(m1, newdata = subset(d, published==1))
+
+print(m2_w_pb)
+
+
+pp_check(m2_w_pb,ndraws = 1000)
+pp_check(m1, ndraws = 1000)
+
+```
+
+
+2. What is the current evidence for distinctive vocal patterns in schizophrenia? 
+Use the data from Parola et al (2020) - https://www.dropbox.com/s/0l9ur0gaabr80a8/Matrix_MetaAnalysis_Diagnosis_updated290719.xlsx?dl=0 - focusing on pitch variability (PITCH_F0SD).  
+
+
+Describe the data available (studies, participants).
+
+
+Using the model from question 1 *analyze the data*, *visualize* and *report the findings*: 
+- population level effect size (estimation of the overall distribution/effect size)
+- how well studies reflect it (the population level effect size).
+- influential studies - Some studies bidrager mere end andre
+-publication bias. 
+
+
+BONUS question: assess the effect of task on the estimates (model comparison with baseline model)
+
+
+
+## Question 2
+
+```{r}
+real_data <- read_xlsx("Matrix_MetaAnalysis_Diagnosis_updated290719.xlsx")
+```
+
+```{r}
+for (i in seq(nrow(real_data))){
+  real_data$SAMPLE_SIZE_TOTAL[i] <- real_data$SAMPLE_SIZE_SZ[i] + real_data$SAMPLE_SIZE_HC[i]
+}
+
+head(real_data$SAMPLE_SIZE_TOTAL)
+```
+
+```{r}
+#Filtering out the unnecessary data
+real_data_pitch <- real_data %>% 
+
+```
+
+Describing the data
+```{r}
+#Barplot of number of participants
+pacman::p_load(viridis, hrbrthemes)
+
+
+ggplot(real_data, aes(x=StudyID, y=SAMPLE_SIZE_TOTAL))+geom_bar(stat="identity")
+```
+
+
+```{r}
+ggplot(real_data, aes( y=SAMPLE_SIZE_TOTAL, x=StudyID)) + 
+    geom_bar(stat="identity") +
+    scale_color_viridis(discrete = F) +
+    ggtitle("Sample size total") +
+    theme_ipsum() +
+    xlab("")
+
+
+```
+

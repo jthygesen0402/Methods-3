@@ -128,7 +128,7 @@ simulation <- function(n){
                             rlnorm(n, meanlog=mu_TD, sdlog=sd_TD)), 
            slope=ifelse(diagnosis=="ASD", 
                         rnorm(n, mean=mu_change_ASD, sd=sigma_change_ASD), 
-                        rnorm(n, mean=mu_change_ASD, sd=sigma_change_TD))) %>% 
+                        rnorm(n, mean=mu_change_TD, sd=sigma_change_TD))) %>% 
     sapply(rep,times=6) %>% 
     as_tibble() %>% 
     mutate(visit=rep(seq(6), each=n),
@@ -496,7 +496,8 @@ print(verb_model)
 
 
 
-Part 3 - From explanation to prediction
+
+## Part 3 - From explanation to prediction ##
 
 N.B. There are several datasets for this exercise, so pay attention to which one you are using!
 
