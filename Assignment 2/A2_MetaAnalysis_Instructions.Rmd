@@ -14,10 +14,13 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 pacman::p_load(tidyverse,msm, brms, gridExtra, bayesplot, rstanarm, readxl)
 
-install.packages("cmdstanr", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
+#install.packages("cmdstanr", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
 
-library(cmdstanr)
+#library(cmdstanr)
+```
 
+
+```{r}
 set.seed(3)
 color_scheme_set(scheme = "viridisC")
 ```
@@ -183,7 +186,14 @@ pp_check(m1, ndraws = 1000)
 
 
 2. What is the current evidence for distinctive vocal patterns in schizophrenia? 
-Use the data from Parola et al (2020) - https://www.dropbox.com/s/0l9ur0gaabr80a8/Matrix_MetaAnalysis_Diagnosis_updated290719.xlsx?dl=0 - focusing on pitch variability (PITCH_F0SD).  Describe the data available (studies, participants). Using the model from question 1 analyze the data, visualize and report the findings: population level effect size; how well studies reflect it; influential studies, publication bias. 
+Use the data from Parola et al (2020) - https://www.dropbox.com/s/0l9ur0gaabr80a8/Matrix_MetaAnalysis_Diagnosis_updated290719.xlsx?dl=0 - focusing on pitch variability (PITCH_F0SD).  
+
+
+Describe the data available (studies, participants).
+
+
+Using the model from question 1 *analyze the data*, *visualize* and *report the findings*: population level effect size; how well studies reflect it; influential studies, publication bias. 
+
 
 BONUS question: assess the effect of task on the estimates (model comparison with baseline model)
 
@@ -193,6 +203,36 @@ BONUS question: assess the effect of task on the estimates (model comparison wit
 
 ```{r}
 real_data <- read_xlsx("Matrix_MetaAnalysis_Diagnosis_updated290719.xlsx")
+```
 
+```{r}
+for (i in seq(nrow(real_data))){
+  real_data$SAMPLE_SIZE_TOTAL[i] <- real_data$SAMPLE_SIZE_SZ[i] + real_data$SAMPLE_SIZE_HC[i]
+}
+
+head(real_data$SAMPLE_SIZE_TOTAL)
+```
+
+Describing the data
+```{r}
+#stacked barplot of number of participants
+pacman::p_load(viridis, hrbrthemes)
+
+
+as.factor(real_data$StudyID)
+as.integer(real_data$SAMPLE_SIZE_HC, real_data$SAMPLE_SIZE_SZ, real_data$SAMPLE_SIZE_TOTAL)
+
+ggplot(data=real_data, aes(x=StudyID, y=SAMPLE_SIZE_TOTAL)) +  geom_bar(stat="identity")  +
+  geom_text(aes(label=SAMPLE_SIZE_TOTAL), vjust=1.6, color="white",
+            position = position_dodge(0.9), size=3.5)+
+  scale_fill_brewer(palette="Paired")+
+  theme_minimal()
+
+ggplot(real_data, aes( y=SAMPLE_SIZE_TOTAL, x=StudyID)) + 
+    geom_bar(stat="identity") +
+    scale_color_viridis(discrete = F) +
+    ggtitle("Sample size total") +
+    theme_ipsum() +
+    xlab("")
 ```
 
