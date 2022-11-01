@@ -192,7 +192,11 @@ Use the data from Parola et al (2020) - https://www.dropbox.com/s/0l9ur0gaabr80a
 Describe the data available (studies, participants).
 
 
-Using the model from question 1 *analyze the data*, *visualize* and *report the findings*: population level effect size; how well studies reflect it; influential studies, publication bias. 
+Using the model from question 1 *analyze the data*, *visualize* and *report the findings*: 
+- population level effect size (estimation of the overall distribution/effect size)
+- how well studies reflect it (the population level effect size).
+- influential studies - Some studies bidrager mere end andre
+-publication bias. 
 
 
 BONUS question: assess the effect of task on the estimates (model comparison with baseline model)
@@ -213,26 +217,30 @@ for (i in seq(nrow(real_data))){
 head(real_data$SAMPLE_SIZE_TOTAL)
 ```
 
+```{r}
+#Filtering out the unnecessary data
+real_data_pitch <- real_data %>% 
+
+```
+
 Describing the data
 ```{r}
-#stacked barplot of number of participants
+#Barplot of number of participants
 pacman::p_load(viridis, hrbrthemes)
 
 
-as.factor(real_data$StudyID)
-as.integer(real_data$SAMPLE_SIZE_HC, real_data$SAMPLE_SIZE_SZ, real_data$SAMPLE_SIZE_TOTAL)
+ggplot(real_data, aes(x=StudyID, y=SAMPLE_SIZE_TOTAL))+geom_bar(stat="identity")
+```
 
-ggplot(data=real_data, aes(x=StudyID, y=SAMPLE_SIZE_TOTAL)) +  geom_bar(stat="identity")  +
-  geom_text(aes(label=SAMPLE_SIZE_TOTAL), vjust=1.6, color="white",
-            position = position_dodge(0.9), size=3.5)+
-  scale_fill_brewer(palette="Paired")+
-  theme_minimal()
 
+```{r}
 ggplot(real_data, aes( y=SAMPLE_SIZE_TOTAL, x=StudyID)) + 
     geom_bar(stat="identity") +
     scale_color_viridis(discrete = F) +
     ggtitle("Sample size total") +
     theme_ipsum() +
     xlab("")
+
+
 ```
 
