@@ -259,26 +259,28 @@ ggplot(real_data, aes( y=SAMPLE_SIZE_TOTAL, x=StudyID)) +
 ```
 
 ```{r}
-real_data_pitch <- mutate(real_data_pitch, est_effectsize=NA, est_se=NA)
-for (i in seq(length(real_data_pitch))) {
-  real_data_pitch$est_effectsize[i] <- (real_data_pitch$PITCH_F0SD_HC_M[i]-real_data_pitch$PITCH_F0SD_SZ_M[i])/sqrt((real_data_pitch$PITCH_F0SD_HC_SD[i]^2+real_data_pitch$PITCH_F0SD_SZ_M[i]^2)/2)
-  real_data_pitch$est_se[i] <- sqrt((((real_data_pitch$SAMPLE_SIZE_HC[i]+real_data_pitch$SAMPLE_SIZE_SZ[i])/real_data_pitch$SAMPLE_SIZE_HC[i]*real_data_pitch$SAMPLE_SIZE_SZ[i])+(real_data_pitch$est_effectsize[i]^2/2*(real_data_pitch$SAMPLE_SIZE_HC[i]+real_data_pitch$SAMPLE_SIZE_SZ[i]-2)))*((real_data_pitch$SAMPLE_SIZE_HC[i]+real_data_pitch$SAMPLE_SIZE_SZ[i])/(real_data_pitch$SAMPLE_SIZE_HC[i]+real_data_pitch$SAMPLE_SIZE_SZ[i]-2)))
-}
-```
-```{r}
-df_analysis <- escalc('SMD',
-                      n1i= SAMPLE_SIZE_SZ, n2i= SAMPLE_SIZE_HC,
-                      m1i = PITCH_F0SD_SZ_M, m2i = PITCH_F0SD_HC_M,
-                      sd1i = PITCH_F0SD_SZ_SD, sd2i = PITCH_F0SD_HC_SD,
-                      data = real_data_pitch)
+# real_data_pitch <- mutate(real_data_pitch, est_effectsize=NA, est_se=NA)
+# for (i in seq(length(real_data_pitch))) {
+#   real_data_pitch$est_effectsize[i] <- (real_data_pitch$PITCH_F0SD_HC_M[i]-real_data_pitch$PITCH_F0SD_SZ_M[i])/sqrt((real_data_pitch$PITCH_F0SD_HC_SD[i]^2+real_data_pitch$PITCH_F0SD_SZ_M[i]^2)/2)
+#   real_data_pitch$est_se[i] <- sqrt((((real_data_pitch$SAMPLE_SIZE_HC[i]+real_data_pitch$SAMPLE_SIZE_SZ[i])/real_data_pitch$SAMPLE_SIZE_HC[i]*real_data_pitch$SAMPLE_SIZE_SZ[i])+(real_data_pitch$est_effectsize[i]^2/2*(real_data_pitch$SAMPLE_SIZE_HC[i]+real_data_pitch$SAMPLE_SIZE_SZ[i]-2)))*((real_data_pitch$SAMPLE_SIZE_HC[i]+real_data_pitch$SAMPLE_SIZE_SZ[i])/(real_data_pitch$SAMPLE_SIZE_HC[i]+real_data_pitch$SAMPLE_SIZE_SZ[i]-2)))
+# }
 ```
 
 ```{r}
-f1_real <- bf(est_effectsize|se(vi)~1+(1|StudyID))
+df_analysis <- escalc('SMD',
+                      n1i= SAMPLE_SIZE_HC, n2i= SAMPLE_SIZE_SZ,
+                      m1i = PITCH_F0SD_HC_M, m2i = PITCH_F0SD_SZ_M,
+                      sd1i = PITCH_F0SD_HC_SD, sd2i = PITCH_F0SD_SZ_SD,
+                      data = real_data_pitch)
+df_analysis <- rename(df_analysis, est_effectsize = yi,est_se=vi)
+```
+
+```{r}
+f1_real <- bf(est_effectsize|se(est_se)~1+(1|StudyID))
 
 
 m1_real <-brm(
-  f1,
+  f1_real,
   data=df_analysis,
   family = gaussian,
   prior = p1,
@@ -295,5 +297,30 @@ m1_real <-brm(
 
 print(m1_real)
 
+pp_check(m1_real, ndraws = 1000)
+```
+```{r}
+# Plotting the prior-posterior update checks for the real data
+
+#Sample the parameters of interest:
+m1_real_posterior <- as_draws_df(m1_real)
+
+#The prior-posterior update plot for the intercept beta:
+plot1_real <- ggplot(m1_real_posterior) +
+geom_histogram(aes(prior_Intercept), fill="darkblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(b_Intercept), fill="orange", color="black",alpha=0.6, bins = 30) +
+xlab('Intercept') +
+labs(title="Prior-posterior update check of the effect size") +
+theme_classic()
+
+
+plot2_real <- ggplot(m1_real_posterior) +
+geom_histogram(aes(prior_sd_StudyID), fill="darkblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(sd_StudyID__Intercept), fill="orange", color="black",alpha=0.6, bins = 30) +
+xlab('Intercept') +
+labs(title="Prior-posterior update check standard error of the effect size") +
+theme_classic()
+
+grid.arrange(plot1_real,plot2_real)
 ```
 
