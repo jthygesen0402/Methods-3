@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 # Assignment 2: meta-analysis
 
 ```{r}
-pacman::p_load(tidyverse,msm, brms, gridExtra, bayesplot, rstanarm, readxl, viridis, hrbrthemes,tidyr, metafor)
+pacman::p_load(tidyverse,msm, brms, gridExtra, bayesplot, rstanarm, readxl, viridis, hrbrthemes,tidyr, metafor, reshape2, colorspace)
 
 install.packages("cmdstanr", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
 
