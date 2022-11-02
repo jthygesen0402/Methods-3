@@ -251,8 +251,20 @@ ggplot() +
            stat="identity", position="dodge", width=0.5, colour="black",
            aes(x=StudyID, y=value, fill=variable)) +
   scale_fill_discrete_qualitative(palette="Set 2") + geom_hline(aes(yintercept = mean(dt$value))) + ggtitle("Sample sizes of groups by each study")
-  
+```
 
+```{r}
+mean(d_df$Total)  
+mean(d_df$SZ)
+mean(d_df$HC)
+mean(d_df$female, na.rm=T)
+mean(d_df$male, na.rm=T)
+
+mean(as.numeric(d_df$MALE_SZ), na.rm=T)
+mean(as.numeric(d_df$FEMALE_SZ), na.rm=T)
+
+mean(as.numeric(d_df$MALE_HC), na.rm=T)
+mean(as.numeric(d_df$FEMALE_HC), na.rm=T)
 ```
 
 
@@ -270,7 +282,6 @@ ggplot() +
            stat="identity", position="dodge", width=0.5, colour="black",
            aes(x=StudyID, y=value, fill=variable)) + scale_fill_discrete_qualitative(palette="Warm") + ggtitle("Gender by group")
 ```
-
 
 
 ```{r}
@@ -318,6 +329,7 @@ print(m1_real)
 
 pp_check(m1_real, ndraws = 1000)
 ```
+
 ```{r}
 # Plotting the prior-posterior update checks for the real data
 
