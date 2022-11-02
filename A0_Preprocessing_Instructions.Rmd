@@ -1,11 +1,11 @@
 Assignment 0
 ---
 title: "Assignment 1 - Data Cleaning - Instructions"
-<<<<<<< HEAD
+
 author: NATASHA K: JØRGENSEN
-=======
+
 author: "Geri, Natasha, Emilie, Marton, Jakob"
->>>>>>> df49984552946e848566ff63ee9460a29558ccb2
+
 date: "[FILL IN THE DATE]"
 output: html_document
 ---
@@ -93,16 +93,16 @@ Load the three data sets, after downloading them from dropbox and saving them in
 * Word data: https://www.dropbox.com/s/8ng1civpl2aux58/token_train.csv?dl=0
 
 ```{r}
-<<<<<<< HEAD
+
 lu_train <- read.csv("lu_train.csv")
 demo_train <- read.csv("demo_train.csv", stringsAsFactors = T)
 token_train <- read.csv("token_train.csv", stringsAsFactors = T)
 
-=======
+
 LU_train <- read_csv("LU_train.csv")
 demo_train <- read_csv("demo_train.csv")
 token_train <- read_csv("token_train.csv")
->>>>>>> df49984552946e848566ff63ee9460a29558ccb2
+
 ```
 Individual variability in group level
 Individual variability based on certain population variables 
@@ -138,6 +138,12 @@ Tip: look through the chapter on data transformation in R for data science (http
 
 ```{r}
 demo_train <- demo_train %>% 
+
+              rename (SUBJ = Child.ID)
+  
+names(demo_train) <- toupper(names(demo_train))
+names(LU_train) <- toupper(names(LU_train))
+names(token_train) <- toupper(names(token_train))
   rename (SUBJ = Child.ID)
 
 upper_all <- function(a,b,c){
@@ -175,6 +181,7 @@ clean_visit function(data, num){
 }
 
 substring(LU_train$VISIT, 6,6)
+
 ```
 
 
@@ -185,6 +192,10 @@ Tip: The stringr package is what you need. *str_extract()* will allow you to ext
 
 
 ```{r}
+
+LU_train$VISIT <- parse_number(LU_train$VISIT)
+token_train$VISIT <- parse_number(token_train$VISIT)
+
 #with str_extract
 lu_train$VISIT <- str_extract(lu_train$VISIT, "\\d+") #extract only the numerical value from the string "visit1."
 token_train$VISIT <- str_extract(token_train$VISIT, "\\d+")
@@ -192,6 +203,7 @@ token_train$VISIT <- str_extract(token_train$VISIT, "\\d+")
 #with parse numbers
 lu_train$VISIT <- parse_number(lu_train$VISIT)
 token_train$VISIT <- parse_number(token_train$VISIT)
+
 
 ```
 
@@ -203,6 +215,11 @@ Tip: You can either have one line of code for each child name that is to be chan
 
 
 ```{r}
+
+demo_train$SUBJ <- gsub("\\.","", demo_train$SUBJ) 
+LU_train$SUBJ <- gsub("\\.","\\", LU_train$SUBJ)
+token_train$SUBJ <- gsub("\\.","\\", token_train$SUBJ)
+
 #str_replace_all
 lu_train$SUBJ <- str_replace_all(lu_train$SUBJ, "\\.","")
 
@@ -214,6 +231,7 @@ demo_train$SUBJ <- str_replace_all(demo_train$SUBJ, "\\.","")
 
 #Doing the same but with gsub
 demo_train$SUBJ <- gsub("\\.","", demo_train$SUBJ) 
+
 
 
 
@@ -261,7 +279,14 @@ Feel free to rename the variables into something you can remember (i.e. nonVerba
 
 ```{r}
 
+token_train_sub <- subset(token_train, select = -8) 
+
+
+LU_train_sub <- LU_train %>% 
+
+
 lu_train_sub <- lu_train %>% 
+
   select(SUBJ,
          VISIT,
          MOT_MLU,
@@ -276,11 +301,16 @@ demo_train_sub <- demo_train %>%
          AGE, 
          ADOS, 
          MULLENRAW,
+
+         EXPRESSIVELANGRAW,
+         SOCIALIZATION)
+
          EXPRESSIVELANGRAW, 
          SOCIALIZATION)
          
          
 token_train_sub <- subset(token_train, select = -8) 
+
 
 ```
 
@@ -291,6 +321,9 @@ Some things to pay attention to:
 * make sure to understand whether (and if so why) there are NAs in the data set (e.g. some measures were not taken at all visits, some recordings were lost or permission to use was withdrawn)
 
 ```{r}
+merged <- inner_join(LU_train_sub, token_train_sub)
+
+merged <- inner_join(merged, demo_train_sub)
 
 
 merged <- inner_join(lu_train_sub, token_train_sub)
