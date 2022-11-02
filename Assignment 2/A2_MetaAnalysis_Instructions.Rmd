@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 # Assignment 2: meta-analysis
 
 ```{r}
-pacman::p_load(tidyverse,msm, brms, gridExtra, bayesplot, rstanarm, readxl)
+pacman::p_load(tidyverse,msm, brms, gridExtra, bayesplot, rstanarm, readxl,viridis, hrbrthemes, tidyr, metafor)
 
 install.packages("cmdstanr", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
 
@@ -241,7 +241,6 @@ real_data_pitch <- real_data %>% drop_na(PITCH_F0SD_HC_M)
 Describing the data
 ```{r}
 #Barplot of number of participants
-pacman::p_load(viridis, hrbrthemes)
 
 
 ggplot(real_data, aes(x=StudyID, y=SAMPLE_SIZE_TOTAL))+geom_bar(stat="identity")
@@ -260,10 +259,41 @@ ggplot(real_data, aes( y=SAMPLE_SIZE_TOTAL, x=StudyID)) +
 ```
 
 ```{r}
-real_data_pitch <- mutate(real_data, effect_size=NA)
+real_data_pitch <- mutate(real_data_pitch, est_effectsize=NA, est_se=NA)
 for (i in seq(length(real_data_pitch))) {
-  real_data_pitch$effect_size[i] <- (real_data_pitch$PITCH_F0SD_HC_M[i]-real_data_pitch$PITCH_F0SD_SZ_M[i])/sqrt((real_data_pitch$PITCH_F0SD_HC_SD[i]^2+real_data_pitch$PITCH_F0SD_SZ_M[i]^2)/2)
+  real_data_pitch$est_effectsize[i] <- (real_data_pitch$PITCH_F0SD_HC_M[i]-real_data_pitch$PITCH_F0SD_SZ_M[i])/sqrt((real_data_pitch$PITCH_F0SD_HC_SD[i]^2+real_data_pitch$PITCH_F0SD_SZ_M[i]^2)/2)
+  real_data_pitch$est_se[i] <- sqrt((((real_data_pitch$SAMPLE_SIZE_HC[i]+real_data_pitch$SAMPLE_SIZE_SZ[i])/real_data_pitch$SAMPLE_SIZE_HC[i]*real_data_pitch$SAMPLE_SIZE_SZ[i])+(real_data_pitch$est_effectsize[i]^2/2*(real_data_pitch$SAMPLE_SIZE_HC[i]+real_data_pitch$SAMPLE_SIZE_SZ[i]-2)))*((real_data_pitch$SAMPLE_SIZE_HC[i]+real_data_pitch$SAMPLE_SIZE_SZ[i])/(real_data_pitch$SAMPLE_SIZE_HC[i]+real_data_pitch$SAMPLE_SIZE_SZ[i]-2)))
 }
 ```
+```{r}
+df_analysis <- escalc('SMD',
+                      n1i= SAMPLE_SIZE_SZ, n2i= SAMPLE_SIZE_HC,
+                      m1i = PITCH_F0SD_SZ_M, m2i = PITCH_F0SD_HC_M,
+                      sd1i = PITCH_F0SD_SZ_SD, sd2i = PITCH_F0SD_HC_SD,
+                      data = real_data_pitch)
+```
 
+```{r}
+f1_real <- bf(est_effectsize|se(vi)~1+(1|StudyID))
+
+
+m1_real <-brm(
+  f1,
+  data=df_analysis,
+  family = gaussian,
+  prior = p1,
+  sample_prior = T,
+  backend = "cmdstanr",
+  threads = threading(2),
+  chains = 2,
+  cores = 2,
+  control = list(
+    adapt_delta = 0.9,
+    max_treedepth = 20),
+  stan_model_args = list(stanc_options=list("01"))
+)
+
+print(m1_real)
+
+```
 
