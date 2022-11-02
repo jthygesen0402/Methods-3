@@ -224,14 +224,7 @@ real_data_pitch <- real_data %>% drop_na(PITCH_F0SD_HC_M)
 
 Describing the data
 ```{r}
-#Histogram of number of participants by group
-
-real_data_pitch %>% 
-  ggplot() + aes(x=StudyID, y=SAMPLE_SIZE_TOTAL) +
-  geom_bar(stat = "identity")
-
-
-?geom_bar()
+#
 
 ```
 
