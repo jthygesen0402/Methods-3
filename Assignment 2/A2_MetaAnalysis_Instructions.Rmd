@@ -203,33 +203,71 @@ BONUS question: assess the effect of task on the estimates (model comparison wit
 
 
 ## Question 2
-
 ```{r}
-
+real_data <- read_xlsx("Matrix_MetaAnalysis_Diagnosis_updated290719.xlsx")
 ```
 
 ```{r}
 for (i in seq(nrow(real_data))){
-  real_data$SAMPLE_SIZE_TOTAL[i] <- real_data$SAMPLE_SIZE_SZ[i] + real_data$SAMPLE_SIZE_HC[i]
+  real_data$Total[i] <- real_data$SAMPLE_SIZE_SZ[i] + real_data$SAMPLE_SIZE_HC[i]
 }
 
-head(real_data$SAMPLE_SIZE_TOTAL)
 ```
 
 ```{r}
-#Filtering out the unnecessary data
+#Filtering out the unnecessary data 
 real_data_pitch <- real_data %>% drop_na(PITCH_F0SD_HC_M)
 
+#renaming the study ID's - multivariate studies will be seen as separate studies
+real_data_pitch <- real_data_pitch %>% mutate(StudyID = seq(1:15))
 ```
+
 
 Describing the data
 ```{r}
-#
+d_df <- real_data_pitch %>% 
+  select(SAMPLE_SIZE_SZ,SAMPLE_SIZE_HC, Total, StudyID, FEMALE_SZ, FEMALE_HC, MALE_SZ,MALE_HC) %>% rename(SZ = SAMPLE_SIZE_SZ, 
+         HC=SAMPLE_SIZE_HC) 
+
+
+d_df <- d_df %>% mutate(
+  female = as.numeric(FEMALE_SZ) + as.numeric(FEMALE_HC), 
+  male = as.numeric(MALE_SZ)+as.numeric(MALE_HC))
+```
+
+```{r}
+ss <- d_df %>% select(SZ,HC, Total, StudyID)
+ss <- melt(ss, id.vars="StudyID") 
+```
+
+```{r}
+#plotting sample sizes by group
+dt <- ss %>% filter(variable =="Total")
+
+ggplot() + 
+  geom_bar(data=ss %>% filter(variable=="Total"),
+           aes(x=StudyID, y=value, fill=variable), stat="identity", width=0.8) +
+  geom_bar(data=ss %>% filter(variable != "Total"),
+           stat="identity", position="dodge", width=0.5, colour="black",
+           aes(x=StudyID, y=value, fill=variable)) +
+  scale_fill_discrete_qualitative(palette="Set 2") + geom_hline(aes(yintercept = mean(dt$value))) + ggtitle("Sample sizes of groups by each study")
+  
 
 ```
 
 
 ```{r}
+fem <- d_df %>% select(female, male,StudyID, Total)
+fem <- melt(fem, id.vars="StudyID")
+```
 
+```{r}
+#plotting gender by group
+ggplot() + 
+  geom_bar(data=fem %>% filter(variable=="Total"),
+           aes(x=StudyID, y=value), stat="identity", width=0.8) +
+  geom_bar(data=fem %>% filter(variable != "Total"),
+           stat="identity", position="dodge", width=0.5, colour="black",
+           aes(x=StudyID, y=value, fill=variable)) + scale_fill_discrete_qualitative(palette="Warm") + ggtitle("Gender by group")
 ```
 
