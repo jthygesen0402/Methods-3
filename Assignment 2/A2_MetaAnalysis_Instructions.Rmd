@@ -214,7 +214,6 @@ for (i in seq(nrow(real_data))){
   real_data$SAMPLE_SIZE_TOTAL[i] <- real_data$SAMPLE_SIZE_SZ[i] + real_data$SAMPLE_SIZE_HC[i]
 }
 
-head(real_data$SAMPLE_SIZE_TOTAL)
 ```
 
 ```{r}
@@ -244,11 +243,15 @@ ggplot(real_data, aes( y=SAMPLE_SIZE_TOTAL, x=StudyID)) +
 
 ```
 
+
 Population effects
 ```{r}
-real_data_pitch <- mutate(real_data, effect_size=NA)
+real_data_pitch <- mutate(real_data_pitch, effect_size=NA)
+
+
 for (i in seq(length(real_data_pitch))) {
   real_data_pitch$effect_size[i] <- (real_data_pitch$PITCH_F0SD_HC_M[i]-real_data_pitch$PITCH_F0SD_SZ_M[i])/sqrt((real_data_pitch$PITCH_F0SD_HC_SD[i]^2+real_data_pitch$PITCH_F0SD_SZ_M[i]^2)/2)
-  }
+}
+
 ```
 
