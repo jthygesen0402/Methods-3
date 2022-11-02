@@ -207,53 +207,50 @@ BONUS question: assess the effect of task on the estimates (model comparison wit
 
 ```{r}
 real_data <- read_xlsx("Matrix_MetaAnalysis_Diagnosis_updated290719.xlsx")
-
-#real_data %>% select(StudyID) %>% duplicated() %>% sum()
 ```
 
 ```{r}
 for (i in seq(nrow(real_data))){
-  real_data$SAMPLE_SIZE_TOTAL[i] <- real_data$SAMPLE_SIZE_SZ[i] + real_data$SAMPLE_SIZE_HC[i]
+  real_data$Total[i] <- real_data$SAMPLE_SIZE_SZ[i] + real_data$SAMPLE_SIZE_HC[i]
 }
 
 ```
 
 ```{r}
-#Filtering out the unnecessary data
+#Filtering out the unnecessary data 
 real_data_pitch <- real_data %>% drop_na(PITCH_F0SD_HC_M)
 
 #renaming the study ID's - multivariate studies will be seen as separate studies
-real_data_pitch$StudyID <- real_data_pitch %>% mutate(StudyID = seq(1:15))
+real_data_pitch <- real_data_pitch %>% mutate(StudyID = seq(1:15))
 ```
 
 Describing the data
 ```{r}
-#Preprocessing before plotting
-#real_data_pitch$SAMPLE_SIZE_HC
-#real_data_pitch$SAMPLE_SIZE_SZ
-#real_data_pitch$SAMPLE_SIZE_TOTAL
-#real_data_pitch$StudyID
+d_df <- real_data_pitch %>% 
+  select(SAMPLE_SIZE_SZ,SAMPLE_SIZE_HC, Total, StudyID, FEMALE_SZ, FEMALE_HC, MALE_SZ,MALE_HC) %>% rename(SZ = SAMPLE_SIZE_SZ, 
+         HC=SAMPLE_SIZE_HC) 
 
-pdf <- tibble(
-  HC=c(35,  36,  18,  27,  19,  37  ,20, 101,  68,  20  ,19,  19,  25,  25,  30),
-  SZ = c(45,  8, 39, 28, 60, 39, 46, 94, 62, 22, 45, 45, 36, 36, 57),
-  Total=c(80,  44,  57,  55,  79,  76,  66 ,195, 130,  42,  64,  64,  61,  61,  87),
-  studyID = c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15))
+
+d_df <- d_df %>% mutate(
+  female = as.numeric(FEMALE_SZ) + as.numeric(FEMALE_HC), 
+  male = as.numeric(MALE_SZ)+as.numeric(MALE_HC))
 ```
 
 ```{r}
-pdf_m <- melt(pdf,id.vars = "studyID")
+ss <- d_df %>% select(SZ,HC, Total, StudyID)
+ss <- melt(ss, id.vars="StudyID") 
 ```
 
 ```{r}
-dt <- pdf_m %>% filter(variable =="Total")
+#plotting sample sizes by group
+dt <- ss %>% filter(variable =="Total")
 
 ggplot() + 
-  geom_bar(data=pdf_m %>% filter(variable=="Total"),
-           aes(x=studyID, y=value, fill=variable), stat="identity", width=0.8) +
-  geom_bar(data=pdf_m %>% filter(variable != "Total"),
+  geom_bar(data=ss %>% filter(variable=="Total"),
+           aes(x=StudyID, y=value, fill=variable), stat="identity", width=0.8) +
+  geom_bar(data=ss %>% filter(variable != "Total"),
            stat="identity", position="dodge", width=0.5, colour="black",
-           aes(x=studyID, y=value, fill=variable)) +
+           aes(x=StudyID, y=value, fill=variable)) +
   scale_fill_discrete_qualitative(palette="Set 2") + geom_hline(aes(yintercept = mean(dt$value))) + ggtitle("Sample sizes of groups by each study")
   
 
@@ -261,70 +258,17 @@ ggplot() +
 
 
 ```{r}
-#real_data_pitch$FEMALE_HC
-#real_data_pitch$FEMALE_SZ
-
-fem_gr <- tibble(
-  female_SZ=c(13,4, 12, NA, 16, 24,  0, 23, 23,  9,  6, 6, 13,13, 16),
-  female_HC = c(13, 18, 10, NA,  6, 23,  0, 45, 45, 10, 12, 12, 10, 10,15),
-  female_total =female_HC + female_SZ,
-  studyID = pdf$studyID)
-
-fem_gr <- melt(fem_gr, id.vars="studyID")
+fem <- d_df %>% select(female, male,StudyID, Total)
+fem <- melt(fem, id.vars="StudyID")
 ```
 
 ```{r}
-#plotting females by group
+#plotting gender by group
 ggplot() + 
-  geom_bar(data=fem_gr %>% filter(variable=="female_total"),
-           aes(x=studyID, y=value), stat="identity", width=0.8) +
-  geom_bar(data=fem_gr %>% filter(variable != "female_total"),
+  geom_bar(data=fem %>% filter(variable=="Total"),
+           aes(x=StudyID, y=value), stat="identity", width=0.8) +
+  geom_bar(data=fem %>% filter(variable != "Total"),
            stat="identity", position="dodge", width=0.5, colour="black",
-           aes(x=studyID, y=value, fill=variable)) + scale_fill_discrete_qualitative(palette="Cold")
-```
-
-
-```{r}
-#real_data_pitch$MALE_HC
-#real_data_pitch$MALE_SZ
-
-mm <- tibble(
-  male_SZ = c(32,4  ,27 ,NA ,44 ,15 ,46 ,71 ,71 ,13 ,39 ,39 ,23 ,23 ,41),
-  male_HC = c(22, 18,  8 ,NA, 13, 14, 20, 56, 56, 10,  7,  7, 15, 15, 15),
-  male_total = male_HC + male_SZ,
-  studyID = pdf$studyID)
-
-mm <- melt(mm, id.vars = "studyID")
-
-```
-
-
-```{r}
-ggplot() + 
-  geom_bar(data=mm %>% filter(variable=="male_total"),
-           aes(x=studyID, y=value), stat="identity", width=0.8) +
-  geom_bar(data=mm %>% filter(variable != "male_total"),
-           stat="identity", position="dodge", width=0.5, colour="black",
-           aes(x=studyID, y=value, fill=variable)) + scale_fill_discrete_qualitative(palette="Cold")
-```
-
-```{r}
-fem <- fem_gr %>% filter(variable =="female_total")
-mal <- mm %>% filter(variable=="male_total")
-ss_t <- pdf %>% select(Total)
-
-gender <- melt((fem, mal), by="studyID")
-
-
-
-ggplot() + 
-  geom_bar(data=gender_m %>% filter(variable=="Total"),
-           aes(x=studyID, y=value), stat="identity", width=0.8) +
-  geom_bar(data=gender_m %>% filter(variable != "Total"),
-           stat="identity", position="dodge", width=0.5, colour="black",
-           aes(x=studyID, y=value, fill=variable)) + scale_fill_discrete_qualitative(palette="Cold")
-
-```
-
+           aes(x=StudyID, y=value, fill=variable)) + scale_fill_discrete_qualitative(palette="Warm") + ggtitle("Gender by group")
 ```
 
