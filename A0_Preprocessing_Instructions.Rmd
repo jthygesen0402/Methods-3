@@ -1,6 +1,11 @@
+Assignment 0
 ---
 title: "Assignment 1 - Data Cleaning - Instructions"
+
+author: NATASHA K: JØRGENSEN
+
 author: "Geri, Natasha, Emilie, Marton, Jakob"
+
 date: "[FILL IN THE DATE]"
 output: html_document
 ---
@@ -15,7 +20,7 @@ In this warm-up assignment you will:
 2) Use small nifty lines of code to transform several data sets into just one. The final data set will contain only the variables that are needed for the analysis in the next parts of the assignment
 3) Warm up your tidyverse skills (especially the sub-packages stringr and dplyr), which you will find handy for later assignments.
 
-N.B: Usually you'll also have to doc/pdf with a text. Not for Assignment 1.
+N.B: Usually you'll also have to doc/pdf with a text. Not for Assignment 0.
 
 ## Learning objectives:
 
@@ -33,17 +38,20 @@ Reference to the study: https://www.ncbi.nlm.nih.gov/pubmed/30396129
 Background: Autism Spectrum Disorder (ASD) is often related to language impairment, and language impairment strongly affects the patients ability to function socially (maintaining a social network, thriving at work, etc.). It is therefore crucial to understand how language abilities develop in children with ASD, and which factors affect them (to figure out e.g. how a child will develop in the future and whether there is a need for language therapy).
 However, language impairment is always quantified by relying on the parent, teacher or clinician subjective judgment of the child, and measured very sparsely (e.g. at 3 years of age and again at 6). 
 
-In this study we videotaped circa 30 kids with ASD and circa 30 comparison kids (matched by linguistic performance at visit 1) for ca. 30 minutes of naturalistic interactions with a parent. We repeated the data collection 6 times per kid, with 4 months between each visit. We transcribed the data and counted: 
+In this study we videotaped circa *30 kids with ASD* and *circa 30 comparison kids* (matched by linguistic performance at visit 1) for ca. 30 minutes of naturalistic interactions with a parent. We repeated the data collection *6 times per kid*, with 4 months between each visit. 
+We transcribed the data and counted: 
 i) the amount of words that each kid uses in each video. Same for the parent.
 ii) the amount of unique words that each kid uses in each video. Same for the parent.
 iii) the amount of morphemes per utterance (Mean Length of Utterance) displayed by each child in each video. Same for the parent. 
 
-Different researchers involved in the project provide you with different datasets: 
+Different researchers involved in the project provide you with different data sets: 
 1) demographic and clinical data about the children (recorded by a clinical psychologist)
 2) length of utterance data (calculated by a linguist)
 3) amount of unique and total words used (calculated by a fumbling jack-of-all-trade, let's call him RF)
 
 Your job in this assignment is to double check the data and make sure that it is ready for the analysis proper (Assignment 2), in which we will try to understand how the children's language develops as they grow as a function of cognitive and social factors and which are the "cues" suggesting a likely future language impairment.
+
+
 
 ## 1. Let's get started on GitHub
 
@@ -56,26 +64,53 @@ Follow the link to one of the tutorials indicated in the syllabus:
 
 N.B. Create a GitHub repository for the Assignment 1 and link it to a project on your RStudio.
 
+
 ## 2. Now let's take dirty dirty data sets and make them into a tidy one
 
 If you're not in a project in Rstudio, make sure to set your working directory here.
 If you created an RStudio project, then your working directory (the directory with your data and code for these assignments) is the project directory.
 
 ```{r}
+getwd()
 pacman::p_load(tidyverse,
-               janitor)
+               janitor,
+               here, 
+               knitr,
+               namespace, 
+               readr,
+               stringr,
+               dplyr)
+
+setwd("C:/Users/admin/Documents/Methods-3")
+here()
+
+
 ```
 
 Load the three data sets, after downloading them from dropbox and saving them in your working directory:
 * Demographic data for the participants: https://www.dropbox.com/s/w15pou9wstgc8fe/demo_train.csv?dl=0
-* Length of utterance data: https://www.dropbox.com/s/usyauqm37a76of6/LU_train.csv?dl=0
+* Length of utterance data: https://www.dropbox.com/s/usyauqm37a76of6/lu_train.csv?dl=0
 * Word data: https://www.dropbox.com/s/8ng1civpl2aux58/token_train.csv?dl=0
 
 ```{r}
+
+lu_train <- read.csv("lu_train.csv")
+demo_train <- read.csv("demo_train.csv", stringsAsFactors = T)
+token_train <- read.csv("token_train.csv", stringsAsFactors = T)
+
+
 LU_train <- read_csv("LU_train.csv")
 demo_train <- read_csv("demo_train.csv")
 token_train <- read_csv("token_train.csv")
+
 ```
+Individual variability in group level
+Individual variability based on certain population variables 
+Multilevel models and mixed effect models
+- multilevel is better :))) - not random, there's just different levels
+Visualize effect of difference between levels
+
+
 
 Explore the 3 data sets (e.g. visualize them, summarize them, etc.). You will see that the data is messy, since the psychologist collected the demographic data, the linguist analyzed the length of utterance in May 2014 and the fumbling jack-of-all-trades analyzed the words several months later. 
 In particular:
@@ -83,11 +118,19 @@ In particular:
 - the same variables might report the values in different ways (e.g. participant and visit IDs)
 Welcome to real world of messy data :-)
 
+```{r}
+head(lu_train)
+head(demo_train)
+head(token_train)
+
+```
+
+
 Before being able to combine the data sets we need to make sure the relevant variables have the same names and the same kind of values.
 
 So:
 
-2a. Identify which variable names do not match (that is are spelled differently) and find a way to transform variable names.
+*2a)* Identify which variable names do not match (that is are spelled differently) and find a way to transform variable names.
 Pay particular attention to the variables indicating participant and visit.
 
 Tip: look through the chapter on data transformation in R for data science (http://r4ds.had.co.nz). Alternatively you can look into the package dplyr (part of tidyverse), or google "how to rename variables in R". Or check the janitor R package. There are always multiple ways of solving any problem and no absolute best method.
@@ -95,21 +138,73 @@ Tip: look through the chapter on data transformation in R for data science (http
 
 ```{r}
 demo_train <- demo_train %>% 
+
               rename (SUBJ = Child.ID)
   
 names(demo_train) <- toupper(names(demo_train))
 names(LU_train) <- toupper(names(LU_train))
 names(token_train) <- toupper(names(token_train))
+  rename (SUBJ = Child.ID)
+
+upper_all <- function(a,b,c){
+  names(a) <- toupper(names(a))
+  names(b) <- toupper(names(b))
+  names(c) <- toupper(names(c))
+  }
+
+upper_all <- function(a,b,c){
+  df.list <- list(a,b,c)
+  toupper(names(df.list))
+  }
+
+upper_all(demo_train, lu_train, token_train)
+
+
+ 
+
+#The function above did not work, so I made it by hand .. :/
+names(demo_train) <- toupper(names(demo_train))
+names(lu_train) <- toupper(names(lu_train))
+names(token_train) <- toupper(names(token_train))
+
+#Making the visit column into factors
+demo_train$VISIT <- as.factor(demo_train$VISIT)
+lu_train$VISIT <- as.factor(lu_train$VISIT)
+token_train$VISIT <- as.factor(token_train$VISIT)
+
+parse_integer()
+gsub()
+
+
+clean_visit function(data, num){
+  filter(data, VISIT)
+}
+
+substring(LU_train$VISIT, 6,6)
+
 ```
+
+
 
 2b. Find a way to homogenize the way "visit" is reported (visit1 vs. 1).
 
-Tip: The stringr package is what you need. str_extract () will allow you to extract only the digit (number) from a string, by using the regular expression \\d.
+Tip: The stringr package is what you need. *str_extract()* will allow you to extract only the digit (number) from a string, by using the regular expression \\d.
 
 
 ```{r}
+
 LU_train$VISIT <- parse_number(LU_train$VISIT)
 token_train$VISIT <- parse_number(token_train$VISIT)
+
+#with str_extract
+lu_train$VISIT <- str_extract(lu_train$VISIT, "\\d+") #extract only the numerical value from the string "visit1."
+token_train$VISIT <- str_extract(token_train$VISIT, "\\d+")
+
+#with parse numbers
+lu_train$VISIT <- parse_number(lu_train$VISIT)
+token_train$VISIT <- parse_number(token_train$VISIT)
+
+
 ```
 
 2c. We also need to make a small adjustment to the content of the Child.ID column in the demographic data. Within this column, names that are not abbreviations do not end with "." (i.e. Adam), which is the case in the other two data sets (i.e. Adam.). If The content of the two variables isn't identical the rows will not be merged.
@@ -120,9 +215,26 @@ Tip: You can either have one line of code for each child name that is to be chan
 
 
 ```{r}
+
 demo_train$SUBJ <- gsub("\\.","", demo_train$SUBJ) 
 LU_train$SUBJ <- gsub("\\.","\\", LU_train$SUBJ)
 token_train$SUBJ <- gsub("\\.","\\", token_train$SUBJ)
+
+#str_replace_all
+lu_train$SUBJ <- str_replace_all(lu_train$SUBJ, "\\.","")
+
+token_train$SUBJ <- str_replace_all(token_train$SUBJ, "\\.","")
+
+
+demo_train$SUBJ <- str_replace_all(demo_train$SUBJ, "\\.","")
+
+
+#Doing the same but with gsub
+demo_train$SUBJ <- gsub("\\.","", demo_train$SUBJ) 
+
+
+
+
 ```
 
 2d. Now that the nitty gritty details of the different data sets are fixed, we want to make a subset of each data set only containig the variables that we wish to use in the final data set.
@@ -139,8 +251,8 @@ The variables we need are:
 * MullenRaw, 
 * ExpressiveLangRaw, 
 * Socialization
-* MOT_MLU, 
-* CHI_MLU, 
+* MOT_Mlu, 
+* CHI_Mlu, 
 * types_MOT, 
 * types_CHI, 
 * tokens_MOT, 
@@ -148,20 +260,33 @@ The variables we need are:
 
 Most variables should make sense, here the less intuitive ones. 
 * ADOS (Autism Diagnostic Observation Schedule) indicates the severity of the autistic symptoms (the higher the score, the worse the symptoms). Ref: https://link.springer.com/article/10.1023/A:1005592401947
-* MLU stands for mean length of utterance (usually a proxy for syntactic complexity)
+
+* Mlu stands for mean length of utterance (usually a proxy for syntactic complexity)
+
 * types stands for unique words (e.g. even if "doggie" is used 100 times it only counts for 1)
+
 * tokens stands for overall amount of words (if "doggie" is used 100 times it counts for 100) 
+
 * MullenRaw indicates non verbal IQ, as measured by Mullen Scales of Early Learning (MSEL https://link.springer.com/referenceworkentry/10.1007%2F978-1-4419-1698-3_596)
+
 * ExpressiveLangRaw indicates verbal IQ, as measured by MSEL
+
 * Socialization indicates social interaction skills and social responsiveness, as measured by Vineland (https://cloudfront.ualberta.ca/-/media/ualberta/faculties-and-programs/centres-institutes/community-university-partnership/resources/tools---assessment/vinelandjune-2012.pdf)
+
+
 
 Feel free to rename the variables into something you can remember (i.e. nonVerbalIQ, verbalIQ)
 
 ```{r}
+
 token_train_sub <- subset(token_train, select = -8) 
 
 
 LU_train_sub <- LU_train %>% 
+
+
+lu_train_sub <- lu_train %>% 
+
   select(SUBJ,
          VISIT,
          MOT_MLU,
@@ -176,8 +301,17 @@ demo_train_sub <- demo_train %>%
          AGE, 
          ADOS, 
          MULLENRAW,
+
          EXPRESSIVELANGRAW,
          SOCIALIZATION)
+
+         EXPRESSIVELANGRAW, 
+         SOCIALIZATION)
+         
+         
+token_train_sub <- subset(token_train, select = -8) 
+
+
 ```
 
 2e. Finally we are ready to merge all the data sets into just one. 
@@ -188,6 +322,11 @@ Some things to pay attention to:
 
 ```{r}
 merged <- inner_join(LU_train_sub, token_train_sub)
+
+merged <- inner_join(merged, demo_train_sub)
+
+
+merged <- inner_join(lu_train_sub, token_train_sub)
 
 merged <- inner_join(merged, demo_train_sub)
 
@@ -206,7 +345,21 @@ A possible way to do so:
 
 
 ```{r}
+merged_sub <- merged %>% 
+  select(ADOS,
+         MULLENRAW,
+         EXPRESSIVELANGRAW,
+         SOCIALIZATION,
+         VISIT, SUBJ) %>% 
+  filter(VISIT == "1") %>% 
+  rename(ADOS1 = ADOS,
+         MULLENRAW1 = MULLENRAW,
+         EXPRESSIVELANGRAW1 = EXPRESSIVELANGRAW,
+         SOCIALZATION1 = SOCIALIZATION)
 
+merged_sub <- merged_sub %>% select(!VISIT)
+
+merged__ <- merge(merged, merged_sub)
 ```
 
 2g. Final touches
@@ -217,6 +370,11 @@ Now we want to
 * Save the data set using into a csv file. Hint: look into write.csv()
 
 ```{r}
+pacman::p_load(digest)
 
+?digest
+
+merged__$ID <- digest(merged__$ID, algo="md5", serialize = F)
 ```
+
 

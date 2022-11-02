@@ -1,0 +1,521 @@
+---
+title: "Assignment 1 - Language development in autistic and neurotypical children"
+author: Emilie, Jakob, Gergana, Natasha
+output: html_document
+date: "2022-10-12"
+---
+
+# Assignment 1  - Language development in autistic and neurotypical children
+
+## Quick recap
+Autism Spectrum Disorder is often related to language impairment. However, this phenomenon has rarely been empirically traced in detail: i) relying on actual naturalistic language production, ii) over extended periods of time.
+
+We therefore videotaped circa 30 kids with ASD and circa 30 comparison kids (matched by linguistic performance at visit 1) for ca. 30 minutes of naturalistic interactions with a parent. We repeated the data collection 6 times per kid, with 4 months between each visit. 
+We transcribed the data and counted: 
+*i) the amount of words that each kid uses in each video. Same for the parent.*
+*ii) the amount of unique words that each kid uses in each video. Same for the parent.*
+*iii) the amount of morphemes per utterance (Mean Length of Utterance) displayed by each child in each video. Same for the parent. *
+
+This data is in the file you prepared in the previous class, but you can also find it here:https://www.dropbox.com/s/d6eerv6cl6eksf3/data_clean.csv?dl=0
+
+
+
+## The structure of the assignment ##
+
+We will be spending a few weeks with this assignment. In particular, we will:
+
+  Part 1) simulate data in order to better understand the model we need to build, and to better understand how much data we would have to collect to run a meaningful study (precision analysis)
+
+  Part 2) analyze our empirical data and interpret the inferential results
+
+  Part 3) use your model to predict the linguistic trajectory of new children and assess the performance of the model based on that.
+  
+
+As you work through these parts, you will have to produce a written document (separated from the code) answering the following questions:
+
+*Q1* - Briefly describe your simulation process, its goals, and what you have learned from the simulation. Add at least a plot showcasing the results of the simulation. Make a special note on sample size considerations: how much data do you think you will need? what else could you do to increase the precision of your estimates?
+
+*Q2* - Briefly describe the empirical data and how they compare to what you learned from the simulation (what can you learn from them?). Briefly describe your model(s) and model quality. Report the findings: how does development differ between autistic and neurotypical children (N.B. remember to report both population and individual level findings)? Which additional factors should be included in the model? Add at least one plot showcasing your findings.
+
+*Q3* - Given the model(s) from Q2, how well do they predict the data? Discuss both in terms of absolute error in training vs testing; and in terms of characterizing the new kids' language development as typical or in need of support.
+
+
+
+Below you can find more detailed instructions for each part of the assignment.
+
+## Part 1 - Simulating data ##
+
+Before we even think of analyzing the data, we should make sure we understand the problem, and we plan the analysis. To do so, we need to simulate data and analyze the simulated data (where we know the ground truth).
+
+In particular, let's imagine we have n autistic and n neurotypical children. We are simulating their average utterance length (Mean Length of Utterance or MLU) in terms of words, starting at Visit 1 and all the way to Visit 6.
+In other words, we need to define a few parameters:
+- average MLU for ASD (population mean) at Visit 1 and average individual deviation from that (population standard deviation)
+- average MLU for TD (population mean) at Visit 1 and average individual deviation from that (population standard deviation)
+- average change in MLU by visit for ASD (population mean) and average individual deviation from that (population standard deviation)
+- average change in MLU by visit for TD (population mean) and average individual deviation from that (population standard deviation)
+- an error term. Errors could be due to measurement, sampling, all sorts of noise. 
+
+Note that this makes a few assumptions: population means are exact values; change by visit is linear (the same between visit 1 and 2 as betweehistn visit 5 and 6). This is fine for the exercise. In real life research, you might want to vary the parameter values much more, relax those assumptions and assess how these things impact your inference.
+
+
+We go through the literature and we settle for some values for these parameters:
+- average MLU for ASD and TD: 1.5 (remember the populations are matched for linguistic ability at first visit)
+- average individual variability in initial MLU for ASD 0.5; for TD 0.3 (remember ASD tends to be more heterogeneous)
+- average change in MLU for ASD: 0.4; for TD 0.6 (ASD is supposed to develop less)
+- average individual variability in change for ASD 0.4; for TD 0.2 (remember ASD tends to be more heterogeneous)
+- error is identified as 0.2
+
+This would mean that on average the difference between ASD and TD participants is 0 at visit 1, 0.2 at visit 2, 0.4 at visit 3, 0.6 at visit 4, 0.8 at visit 5 and 1 at visit 6.
+
+With these values in mind, simulate data, plot the data (to check everything is alright); and set up an analysis pipeline.
+Remember the usual bayesian workflow:
+- define the formula
+- define the prior
+- prior predictive checks
+- fit the model
+- model quality checks: traceplots, divergences, rhat, effective samples
+- model quality checks: posterior predictive checks, prior-posterior update checks
+- model comparison
+
+Once the pipeline is in place, loop through different sample sizes to assess how much data you would need to collect. N.B. for inspiration on how to set this up, check the tutorials by Kurz that are linked in the syllabus.
+
+*BONUS questions for Part 1*: what if the difference between ASD and TD was 0? how big of a sample size would you need? What about different effect sizes, and different error terms?
+
+
+```{r}
+#Loading in packages
+pacman::p_load(tidyverse, brms, bayesplot, rstanarm, zoom, pak, gridExtra, purrr)
+
+pak::pak("tidyverse/tidyverse")
+library(tidyverse)
+library(brms)
+```
+
+```{r}
+color_scheme_set(scheme = "pink")
+```
+
+
+Hardcoding the values
+```{r}
+#Log-scaling the intercepts 
+mu_ASD <- log(1.5)
+sd_ASD <- log(1.5)-log(1.5-0.5)
+
+mu_TD <- log(1.5)
+sd_TD <- log(1.5)-log(1.5-0.3)
+
+#Readjusting the slopes
+mu_change_ASD <- 0.4/1.5 #before 0.4 - beta
+sigma_change_ASD <- 0.4*(0.4/1.5) #before 0.4 - sd_beta
+
+
+mu_change_TD <- 0.6/1.5 #before 0.6
+sigma_change_TD <- 0.2*(0.6/1.5) #before 0.2
+error <- 0.2 
+```
+
+
+Simulating the data
+```{r}
+set.seed(3)
+
+simulation <- function(n){
+  d <- tibble(diagnosis = rep(c("ASD", "TD"), 
+                              each = n/2), ID= seq(n)) %>%
+    mutate(intercept=ifelse(diagnosis=="ASD", 
+                            rlnorm(n, meanlog=mu_ASD, sdlog=sd_ASD),
+                            rlnorm(n, meanlog=mu_TD, sdlog=sd_TD)), 
+           slope=ifelse(diagnosis=="ASD", 
+                        rnorm(n, mean=mu_change_ASD, sd=sigma_change_ASD), 
+                        rnorm(n, mean=mu_change_TD, sd=sigma_change_TD))) %>% 
+    sapply(rep,times=6) %>% 
+    as_tibble() %>% 
+    mutate(visit=rep(seq(6), each=n),
+           intercept=as.numeric(intercept), 
+           slope=as.numeric(slope),MLU=NA) %>% 
+    arrange(ID)
+  
+  
+  for(i in seq(nrow(d))){
+    d$MLU[i] <- rnorm(1, d$intercept[i]+d$slope[i]*(d$visit[i]-1), error)
+  }
+  
+  return(d)
+    }
+
+
+df <- simulation(60)
+```
+
+
+Plotting the simulated data
+```{r}
+ggplot(df, aes(
+  visit, MLU, color = diagnosis, group = ID)) +
+  theme_bw()+
+  geom_point()+
+  geom_line(alpha = 0.3)
+```
+
+
+```{r}
+#Defining the formula for a multi-level model with varying intercepts and varying slopes
+f1 <- bf(MLU~0+diagnosis+diagnosis:visit+(1+visit|ID))
+```
+
+```{r}
+#Getting the priors
+get_prior(data = df,
+          family = gaussian,
+          f1)
+```
+
+```{r}
+#Defining the priors - we set weakly informed priors i.e. that there is no difference in development between the two groups (we want the data to persuade us that there is a difference)
+MLU_priors <- c(
+  brms::prior(normal(0.4,0.2), class = b),
+  brms::prior(normal(0.0,0.20), class = b, coef = "diagnosisASD"),
+  brms::prior(normal(0.0,0.20), class = b, coef = "diagnosisTD"),
+  brms::prior(normal(0,0.5), class = sd, coef = "Intercept", group = ID),
+  brms::prior(normal(0,0.2), class = sd, coef = "visit", group = ID),
+  brms::prior(lkj(1),class="cor"))
+
+
+
+MLU_prior_model <-  brm(
+  f1,
+  data = df,
+  family = lognormal, 
+  prior = MLU_priors,
+  sample_prior = "only",
+  chains = 2,
+  cores = 2,
+  control = list(
+    adapt_delta = 0.99,
+    max_treedepth = 20
+  )
+)
+
+#Prior predictive check
+pp_check(MLU_prior_model, ndraws =100) + xlim(c(-1,100)) 
+```
+
+
+ 
+```{r}
+#Fitting the model 
+MLU_2 <- brm(
+  f1,
+  data =df,
+  family = lognormal,
+    sample_prior = TRUE,
+   chains = 2,
+  cores = 2,
+  control = list(
+    adapt_delta = 0.99,
+    max_treedepth = 20
+  )
+)
+
+
+#Printing the model output
+print(MLU_2)
+
+#Posterior predictive check
+pp_check(MLU_2, ndraws = 100)
+```
+
+
+Plotting the prior-posterior update checks
+```{r}
+#Sample the parameters of interest:
+Posterior_m1 <- as_draws_df(MLU_2)
+
+
+#The prior-posterior update plot for the intercept beta:
+p1 <- ggplot(Posterior_m1) +
+  geom_histogram(aes(prior_b_diagnosisASD), fill="steelblue", color="black",alpha=0.6, bins = 30) +
+  geom_histogram(aes(b_diagnosisASD), fill="#FC4E07", color="black",alpha=0.6, bins = 30) +
+  geom_histogram(aes(b_diagnosisTD), fill = "green", color = "black", alpha=0.6, bins = 30)+
+  xlab('Intercept') +
+  labs(title="Prior-posterior update check of the intercepts") +
+  theme_classic()
+
+p2 <- ggplot(Posterior_m1) +
+  geom_histogram(aes(prior_sd_ID__Intercept), fill="steelblue", color="black",alpha=0.6, bins = 30) +
+  geom_histogram(aes(sd_ID__Intercept), fill="#FC4E07", color="black",alpha=0.6, bins = 30) +
+  xlab('Intercept') +
+  labs(title="Prior-posterior update check variability of the intercept") +
+  theme_classic()
+
+p3 <- ggplot(Posterior_m1) +
+  geom_histogram(aes(`prior_b_diagnosisASD:visit`), fill="steelblue", color="black",alpha=0.6, bins = 30) +
+  geom_histogram(aes(`b_diagnosisASD:visit`), fill="#FC4E07", color="black",alpha=0.6, bins = 30) +
+  geom_histogram(aes(`b_diagnosisTD:visit`), fill = "green", color = "black", alpha=0.6, bins = 30)+
+  xlab('Slope') +
+  labs(title="Prior-posterior update check of the slopes by visit") +
+  theme_classic()
+
+p4 <- ggplot(Posterior_m1) +
+  geom_histogram(aes(prior_sd_ID__visit), fill="steelblue", color="black",alpha=0.6, bins = 30) +
+  geom_histogram(aes(sd_ID__visit), fill="#FC4E07", color="black",alpha=0.6, bins = 30) +
+  xlab('Slope') +
+  labs(title="Prior-posterior update check variability of the slopes") +
+  theme_classic()
+
+p5 <- ggplot(Posterior_m1) +
+  geom_histogram(aes(prior_cor_ID), fill="steelblue", color="black",alpha=0.6, bins = 30) +
+  geom_histogram(aes(cor_ID__Intercept__visit), fill="#FC4E07", color="black",alpha=0.6, bins = 30) +
+  xlab('Correlation') +
+  labs(title="Prior-posterior update check on the correlation") +
+  theme_classic()
+
+grid.arrange(p1,p2,p3,p4,p5)
+```
+
+
+Hypothesis analysis
+```{r}
+hypothesis(MLU_2, "diagnosisTD:visit > diagnosisASD:visit")
+```
+
+
+Power analysis
+```{r}
+## sample size of 60
+#Number of iterations
+n_sim <- 20
+```
+
+```{r}
+#List of wanted samplesizes
+samples <- c(30,40,50,60,70,80,90,100)
+
+
+sample60 <- tibble(seed = 1:n_sim) %>%
+  mutate(d = purrr::map(seed, simulation, n = 60)) %>% 
+  mutate(fit = map2(d, seed, ~update(MLU_2, newdata = .x, seed = .y, iter=10)))
+
+parameters <- sample60 %>% mutate(estimate = map(fit, ~ as_draws_df(.)))
+
+
+parameters$`b_diagnosisASD:visit`-parameters$estimate$`b_diagnosisTD:visit`)
+
+parameters$difference
+  
+parameters$seed <- as.factor(parameters$seed)
+
+
+
+  
+parameters <- parameters %>% 
+  select(-d, -fit) %>% 
+  filter(parameter == c("diagnosisASD:visit","diagnosisTD:visit"))
+
+parameters_diff <- data.frame(seed=NA,diff_Estimate=NA,diff_Est.Error=NA,diff_Q2.5=NA,diff_Q97.5=NA)
+
+for (x in 1:n_sim) {
+  xASD <- parameters %>% 
+    filter(parameter=="diagnosisASD:visit")
+  
+  xTD <- parameters %>% 
+    filter(parameter=="diagnosisTD:visit")
+  
+parameters_diff <-rbind(parameters_diff,data.frame(seed=xASD$seed[x], 
+                                                     diff_Estimate=xTD$Estimate[x]-xASD$Estimate[x],
+                                                     diff_Est.Error=xTD$Est.Error[x]-xASD$Est.Error[x],
+                                                     diff_Q2.5=xTD$Q2.5[x]-xASD$Q2.5[x],
+                                                     diff_Q97.5=xTD$Q97.5[x]-xASD$Q97.5[x])) %>% 
+    na.omit()
+  
+} 
+
+parameters_diff %>% 
+  ggplot(aes(x = seed, y = diff_Estimate, ymin = diff_Q2.5, ymax = diff_Q97.5)) +
+  geom_hline(yintercept = c(0, .5), color = "white") +
+  geom_pointrange(fatten = 1/2) +
+  labs(x = "seed (i.e., simulation index)",
+       y = expression(beta[1]))
+
+parameters_diff %>% 
+  mutate(check = ifelse(diff_Q2.5 > 0, 1, 0)) %>% 
+  summarise(power = mean(check))
+```
+
+
+
+## Part 2 - Strong in the Bayesian ken, you are now ready to analyse the actual data ##
+
+- *Describe your sample* (n, age, gender, clinical and cognitive features of the two groups) and critically assess whether the groups (ASD and TD) are balanced. Briefly discuss whether the data is enough given the simulations in part 1.
+
+- *Describe linguistic development* (in terms of MLU over time) in TD and ASD children (as a function of group). Discuss the difference (if any) between the two groups.
+- Describe individual differences in linguistic development: do all kids follow the same path? Are all kids reflected by the general trend for their group?
+
+- *Include additional predictors* in your model of language development (N.B. not other indexes of child language: types and tokens, that'd be cheating). Identify the best model, by conceptual reasoning, model comparison or a mix. Report the model you choose (and name its competitors, if any) and discuss why it's the best model.
+
+
+```{r}
+#Loading in data
+df_real_data <- read_csv("data/data_clean.csv")
+df_real_data <- df_real_data %>%  rename(diagnosis = Diagnosis, 
+                                         visit = Visit,
+                                         MLU = CHI_MLU,
+                                         ID = Child.ID)
+```
+
+
+Assessing the data
+```{r}
+which(df_real_data$MLU == 0.0)
+
+#Removing child 62 from the analysis because she is nonverbal in two of the visits
+df_real_data <- subset(df_real_data, !ID ==62)
+
+set.seed(4)
+df_real_data[307,13]
+df_real_data[307,13] <- sample(0.1:1.36,1)
+df_real_data[307,13]
+
+
+#mean child age in years
+(mean(df_real_data$Age, na.rm = TRUE))/12 
+
+
+#gender
+df_real_data %>%  
+  filter(Gender=="F") %>% 
+  group_by(ID) %>% summarise()
+```
+
+```{r}
+#Plotting the real data
+ggplot(df_real_data, aes(
+  visit, MLU, color = diagnosis, group = ID)) +
+  theme_bw()+
+  geom_point()+
+  geom_line(alpha = 0.3)
+```
+
+```{r}
+#Z-standardizing the Verbal IQ variable before adding it as predictor
+df_real_data <- df_real_data %>% mutate_at(c("verbalIQ1", "nonVerbalIQ1","MOT_MLU"), ~(scale(.) %>% as.vector))
+
+head(df_real_data)
+```
+
+
+Making a model for the linguistic development of ASD- and TD-children
+```{r}
+#Making a model with the real data
+f_real <- bf(MLU ~ 0 + diagnosis + diagnosis:visit + (1+visit|ID))
+
+real_model <- brm(
+  f_real,
+  data =df_real_data,
+  family = lognormal,
+  prior = MLU_priors,
+    sample_prior = T,
+   chains = 2,
+  cores = 2,
+  control = list(
+    adapt_delta = 0.99,
+    max_treedepth = 20
+  )
+)
+
+#Prior posterior check
+pp_check(real_model)
+```
+
+```{r}
+hypothesis(real_model, "diagnosisTD:visit > diagnosisASD:visit")
+```
+
+```{r}
+print(real_model)
+```
+
+
+Conditional Effects - simulated data vs. real data
+```{r}
+#plotting this (conditional effect)
+## Posterior MLU effects averaged across groups
+plot(conditional_effects(real_model), points=T)
+plot(conditional_effects(MLU_2), points=T)
+```
+
+
+Adding predictors
+```{r}
+#Adding moms' MLUs as a predictor
+f_real2 <- bf(MLU ~ 0 + diagnosis + diagnosis:visit + diagnosis:MOT_MLU + (1+visit|ID))
+
+mom_model <- brm(
+  f_real2,
+  data =df_real_data,
+  family = lognormal,
+  prior = MLU_priors,
+    sample_prior = T,
+   chains = 2,
+  cores = 2,
+  control = list(
+    adapt_delta = 0.99,
+    max_treedepth = 20
+  )
+)
+```
+
+```{r}
+pp_check(mom_model)
+print(mom_model)
+```
+
+
+```{r}
+#Adding verbalIQ and nonverbalIQ as pedictors
+f_real3 <- bf(MLU ~ 0 + diagnosis + diagnosis:visit + diagnosis:verbalIQ1 + diagnosis:nonVerbalIQ1 + (1+visit|ID))
+
+verb_model <- brm(
+  f_real3,
+  data =df_real_data,
+  family = lognormal,
+  prior = MLU_priors,
+    sample_prior = T,
+   chains = 2,
+  cores = 2,
+  control = list(
+    adapt_delta = 0.99,
+    max_treedepth = 20
+  )
+)
+
+pp_check(verb_model)
+print(verb_model)
+```
+
+
+
+
+
+
+## Part 3 - From explanation to prediction ##
+
+N.B. There are several datasets for this exercise, so pay attention to which one you are using!
+
+1. The (training) dataset from last time (the awesome one you produced :-) ).
+2. The (test) datasets on which you can test the models from last time:
+* Demographic and clinical data: https://www.dropbox.com/s/ra99bdvm6fzay3g/demo_test.csv?dl=1
+* Utterance Length data: https://www.dropbox.com/s/uxtqqzl18nwxowq/LU_test.csv?dl=1
+* Word data: https://www.dropbox.com/s/1ces4hv8kh0stov/token_test.csv?dl=1
+
+Relying on the model(s) you trained in part 2 of the exercise, create predictions for the test set and assess how well they do compared to the actual data.
+
+- Discuss the differences in performance of your model in training and testing data. Is the model any good?
+- Let's assume you are a speech therapy clinic. You want to assess whether the kids in your test sample will have a typical (like a TD) development, or they will have a worse one, in which case they should get speech therapy support. What do your predictions tell you about that? Which kids would you provide therapy for? Is the model any good?
+
+```{r}
+
+
+```
+
