@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 # Assignment 2: meta-analysis
 
 ```{r}
-pacman::p_load(tidyverse,msm, brms, gridExtra, bayesplot, rstanarm, readxl, tidyr)
+pacman::p_load(tidyverse,msm, brms, gridExtra, bayesplot, rstanarm, readxl)
 
 #install.packages("cmdstanr", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
 
@@ -214,11 +214,12 @@ for (i in seq(nrow(real_data))){
   real_data$SAMPLE_SIZE_TOTAL[i] <- real_data$SAMPLE_SIZE_SZ[i] + real_data$SAMPLE_SIZE_HC[i]
 }
 
+head(real_data$SAMPLE_SIZE_TOTAL)
 ```
 
 ```{r}
 #Filtering out the unnecessary data
-real_data_pitch <- real_data %>% drop_na(PITCH_F0SD_HC_M)
+real_data_pitch <- real_data %>% 
 
 ```
 
@@ -239,19 +240,6 @@ ggplot(real_data, aes( y=SAMPLE_SIZE_TOTAL, x=StudyID)) +
     ggtitle("Sample size total") +
     theme_ipsum() +
     xlab("")
-
-
-```
-
-
-Population effects
-```{r}
-real_data_pitch <- mutate(real_data_pitch, effect_size=NA)
-
-
-for (i in seq(length(real_data_pitch))) {
-  real_data_pitch$effect_size[i] <- (real_data_pitch$PITCH_F0SD_HC_M[i]-real_data_pitch$PITCH_F0SD_SZ_M[i])/sqrt((real_data_pitch$PITCH_F0SD_HC_SD[i]^2+real_data_pitch$PITCH_F0SD_SZ_M[i]^2)/2)
-}
 
 ```
 
