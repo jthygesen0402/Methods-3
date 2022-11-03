@@ -9,6 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+
 # Assignment 2: meta-analysis
 
 ```{r}
@@ -18,7 +19,6 @@ install.packages("cmdstanr", repos = c("https://mc-stan.org/r-packages/", getOpt
 
 library(cmdstanr)
 ```
-
 
 ```{r}
 set.seed(3)
@@ -34,7 +34,6 @@ BONUS question: do a power/precision analysis: w this kind of sample sizes (part
 
 ```{r}
 #We set the values of the studies
-
 effect_mean <- 0.4
 effect_sd <- 0.4
 error_sigma <- 0.8
@@ -42,7 +41,6 @@ error_sigma <- 0.8
 
 ```{r}
 #We set the number of studies (and other parameters)
-
 studies_n <- 100
 studies_mu <- 20
 studies_sigma <- 10
@@ -86,7 +84,6 @@ get_prior(data = d,
           f1)
 ```
 
-
 ```{r}
 #Setting priors
 p1 <- c(
@@ -116,7 +113,7 @@ m1_prior <-brm(
 #Prior predictive check
 pp_check(m1_prior, ndraws =1000)
 ```
-Compare the estimate with the true value - plot, or whatever
+
 ```{r}
 #Fitting the model
 m1 <-brm(
@@ -181,7 +178,6 @@ print(m1_pb)
 
 pp_check(m1_pb,ndraws = 1000)
 pp_check(m1, ndraws = 1000) #without publication bias
-
 ```
 
 
@@ -212,7 +208,6 @@ real_data <- read_xlsx("Matrix_MetaAnalysis_Diagnosis_updated290719.xlsx")
 for (i in seq(nrow(real_data))){
   real_data$Total[i] <- real_data$SAMPLE_SIZE_SZ[i] + real_data$SAMPLE_SIZE_HC[i]
 }
-
 ```
 
 ```{r}
@@ -349,8 +344,8 @@ grid.arrange(plot1_real,plot2_real)
 ```
 
 ```{r}
+#Compare the real data to publication bias
 pp_check(m1_pb,ndraws = 1000) + xlim(-2,2) #publication bias
 pp_check(m1_real, ndraws = 1000) + xlim(-2,2) 
-
 ```
 
