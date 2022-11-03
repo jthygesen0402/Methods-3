@@ -102,6 +102,7 @@ m1_prior <-brm(
   family = gaussian,
   prior = p1,
   sample_prior = "only",
+  backend = "cmdstanr",
   threads = threading(2),
   chains = 2,
   cores = 2,
@@ -124,14 +125,14 @@ m1 <-brm(
   family = gaussian,
   prior = p1,
   sample_prior = T,
-  #backend = "cmdstanr",
+  backend = "cmdstanr",
   threads = threading(2),
   chains = 2,
   cores = 2,
   control = list(
     adapt_delta = 0.9,
     max_treedepth = 20),
-  #stan_model_args = list(stanc_options=list("01"))
+  stan_model_args = list(stanc_options=list("01"))
 )
 ```
 
@@ -152,7 +153,7 @@ pp_check(m1, ndraws = 1000)
 m1_posterior <- as_draws_df(m1)
 
 #The prior-posterior update plot for the intercept beta:
-p1 <- ggplot(m1_posterior) +
+plot1 <- ggplot(m1_posterior) +
 geom_histogram(aes(prior_Intercept), fill="darkblue", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(b_Intercept), fill="orange", color="black",alpha=0.6, bins = 30) +
 geom_vline(xintercept = 0.4, size=2, color="darkgray")+
@@ -161,7 +162,7 @@ labs(title="Prior-posterior update check of the effect size") +
 theme_classic()
 
 
-p2 <- ggplot(m1_posterior) +
+plot2 <- ggplot(m1_posterior) +
 geom_histogram(aes(prior_sd_study), fill="darkblue", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(sd_study__Intercept), fill="orange", color="black",alpha=0.6, bins = 30) +
 geom_vline(xintercept = 0.4, size=2, color="darkgray")+
@@ -169,16 +170,16 @@ xlab('Intercept') +
 labs(title="Prior-posterior update check standard error of the effect size") +
 theme_classic()
 
-grid.arrange(p1,p2)
+grid.arrange(plot1,plot2)
 ```
 
 ```{r}
-m2_w_pb <- update(m1, newdata = subset(d, published==1))
+m1_pb <- update(m1, newdata = subset(d, published==1))
 
-print(m2_w_pb)
+print(m1_pb)
 
 
-pp_check(m2_w_pb,ndraws = 1000)
+pp_check(m1_pb,ndraws = 1000)
 pp_check(m1, ndraws = 1000) #without publication bias
 
 ```
@@ -348,7 +349,7 @@ grid.arrange(plot1_real,plot2_real)
 ```
 
 ```{r}
-pp_check(m2_w_pb,ndraws = 1000) + xlim(-2,2) #publication bias
+pp_check(m1_pb,ndraws = 1000) + xlim(-2,2) #publication bias
 pp_check(m1_real, ndraws = 1000) + xlim(-2,2) 
 
 ```
