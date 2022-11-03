@@ -284,15 +284,7 @@ ggplot() +
 ```
 
 
-```{r}
-# real_data_pitch <- mutate(real_data_pitch, est_effectsize=NA, est_se=NA)
-# for (i in seq(length(real_data_pitch))) {
-#   real_data_pitch$est_effectsize[i] <- (real_data_pitch$PITCH_F0SD_HC_M[i]-real_data_pitch$PITCH_F0SD_SZ_M[i])/sqrt((real_data_pitch$PITCH_F0SD_HC_SD[i]^2+real_data_pitch$PITCH_F0SD_SZ_M[i]^2)/2)
-#   real_data_pitch$est_se[i] <- sqrt((((real_data_pitch$SAMPLE_SIZE_HC[i]+real_data_pitch$SAMPLE_SIZE_SZ[i])/real_data_pitch$SAMPLE_SIZE_HC[i]*real_data_pitch$SAMPLE_SIZE_SZ[i])+(real_data_pitch$est_effectsize[i]^2/2*(real_data_pitch$SAMPLE_SIZE_HC[i]+real_data_pitch$SAMPLE_SIZE_SZ[i]-2)))*((real_data_pitch$SAMPLE_SIZE_HC[i]+real_data_pitch$SAMPLE_SIZE_SZ[i])/(real_data_pitch$SAMPLE_SIZE_HC[i]+real_data_pitch$SAMPLE_SIZE_SZ[i]-2)))
-# }
-```
-
-
+Analyzing the data
 ```{r}
 #Estimating effect sizes 
 df_analysis <- escalc('SMD',
