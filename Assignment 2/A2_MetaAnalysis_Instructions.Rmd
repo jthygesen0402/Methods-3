@@ -12,11 +12,11 @@ knitr::opts_chunk$set(echo = TRUE)
 # Assignment 2: meta-analysis
 
 ```{r}
-pacman::p_load(tidyverse,msm, brms, gridExtra, bayesplot, rstanarm, readxl, viridis, hrbrthemes,tidyr)
+pacman::p_load(tidyverse,msm, brms, gridExtra, bayesplot, rstanarm, readxl, viridis, hrbrthemes,tidyr, metafor, reshape2, colorspace)
 
-#install.packages("cmdstanr", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
+install.packages("cmdstanr", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
 
-#library(cmdstanr)
+library(cmdstanr)
 ```
 
 
@@ -102,6 +102,7 @@ m1_prior <-brm(
   family = gaussian,
   prior = p1,
   sample_prior = "only",
+  backend = "cmdstanr",
   threads = threading(2),
   chains = 2,
   cores = 2,
@@ -124,14 +125,14 @@ m1 <-brm(
   family = gaussian,
   prior = p1,
   sample_prior = T,
-  #backend = "cmdstanr",
+  backend = "cmdstanr",
   threads = threading(2),
   chains = 2,
   cores = 2,
   control = list(
     adapt_delta = 0.9,
     max_treedepth = 20),
-  #stan_model_args = list(stanc_options=list("01"))
+  stan_model_args = list(stanc_options=list("01"))
 )
 ```
 
@@ -152,7 +153,7 @@ pp_check(m1, ndraws = 1000)
 m1_posterior <- as_draws_df(m1)
 
 #The prior-posterior update plot for the intercept beta:
-p1 <- ggplot(m1_posterior) +
+plot1 <- ggplot(m1_posterior) +
 geom_histogram(aes(prior_Intercept), fill="darkblue", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(b_Intercept), fill="orange", color="black",alpha=0.6, bins = 30) +
 geom_vline(xintercept = 0.4, size=2, color="darkgray")+
@@ -161,7 +162,7 @@ labs(title="Prior-posterior update check of the effect size") +
 theme_classic()
 
 
-p2 <- ggplot(m1_posterior) +
+plot2 <- ggplot(m1_posterior) +
 geom_histogram(aes(prior_sd_study), fill="darkblue", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(sd_study__Intercept), fill="orange", color="black",alpha=0.6, bins = 30) +
 geom_vline(xintercept = 0.4, size=2, color="darkgray")+
@@ -169,16 +170,16 @@ xlab('Intercept') +
 labs(title="Prior-posterior update check standard error of the effect size") +
 theme_classic()
 
-grid.arrange(p1,p2)
+grid.arrange(plot1,plot2)
 ```
 
 ```{r}
-m2_w_pb <- update(m1, newdata = subset(d, published==1))
+m1_pb <- update(m1, newdata = subset(d, published==1))
 
-print(m2_w_pb)
+print(m1_pb)
 
 
-pp_check(m2_w_pb,ndraws = 1000)
+pp_check(m1_pb,ndraws = 1000)
 pp_check(m1, ndraws = 1000) #without publication bias
 
 ```
@@ -203,33 +204,153 @@ BONUS question: assess the effect of task on the estimates (model comparison wit
 
 
 ## Question 2
-
 ```{r}
-
+real_data <- read_xlsx("Matrix_MetaAnalysis_Diagnosis_updated290719.xlsx")
 ```
 
 ```{r}
 for (i in seq(nrow(real_data))){
-  real_data$SAMPLE_SIZE_TOTAL[i] <- real_data$SAMPLE_SIZE_SZ[i] + real_data$SAMPLE_SIZE_HC[i]
+  real_data$Total[i] <- real_data$SAMPLE_SIZE_SZ[i] + real_data$SAMPLE_SIZE_HC[i]
 }
 
-head(real_data$SAMPLE_SIZE_TOTAL)
 ```
 
 ```{r}
-#Filtering out the unnecessary data
+#Filtering out the unnecessary data 
 real_data_pitch <- real_data %>% drop_na(PITCH_F0SD_HC_M)
 
+#renaming the study ID's - multivariate studies will be seen as separate studies
+real_data_pitch <- real_data_pitch %>% mutate(StudyID = seq(1:15))
 ```
+
 
 Describing the data
 ```{r}
-#
+d_df <- real_data_pitch %>% 
+  select(SAMPLE_SIZE_SZ,SAMPLE_SIZE_HC, Total, StudyID, FEMALE_SZ, FEMALE_HC, MALE_SZ,MALE_HC) %>% rename(SZ = SAMPLE_SIZE_SZ, 
+         HC=SAMPLE_SIZE_HC) 
 
+
+d_df <- d_df %>% mutate(
+  female = as.numeric(FEMALE_SZ) + as.numeric(FEMALE_HC), 
+  male = as.numeric(MALE_SZ)+as.numeric(MALE_HC))
+```
+
+```{r}
+ss <- d_df %>% select(SZ,HC, Total, StudyID)
+ss <- melt(ss, id.vars="StudyID") 
+```
+
+```{r}
+#plotting sample sizes by group
+dt <- ss %>% filter(variable =="Total")
+
+ggplot() + 
+  geom_bar(data=ss %>% filter(variable=="Total"),
+           aes(x=StudyID, y=value, fill=variable), stat="identity", width=0.8) +
+  geom_bar(data=ss %>% filter(variable != "Total"),
+           stat="identity", position="dodge", width=0.5, colour="black",
+           aes(x=StudyID, y=value, fill=variable)) +
+  scale_fill_discrete_qualitative(palette="Set 2") + geom_hline(aes(yintercept = mean(dt$value))) + ggtitle("Sample sizes of groups by each study")
+```
+
+```{r}
+mean(d_df$Total)  
+mean(d_df$SZ)
+mean(d_df$HC)
+mean(d_df$female, na.rm=T)
+mean(d_df$male, na.rm=T)
+
+mean(as.numeric(d_df$MALE_SZ), na.rm=T)
+mean(as.numeric(d_df$FEMALE_SZ), na.rm=T)
+
+mean(as.numeric(d_df$MALE_HC), na.rm=T)
+mean(as.numeric(d_df$FEMALE_HC), na.rm=T)
 ```
 
 
 ```{r}
+fem <- d_df %>% select(female, male,StudyID, Total)
+fem <- melt(fem, id.vars="StudyID")
+```
+
+```{r}
+#plotting gender by group
+ggplot() + 
+  geom_bar(data=fem %>% filter(variable=="Total"),
+           aes(x=StudyID, y=value), stat="identity", width=0.8) +
+  geom_bar(data=fem %>% filter(variable != "Total"),
+           stat="identity", position="dodge", width=0.5, colour="black",
+           aes(x=StudyID, y=value, fill=variable)) + scale_fill_discrete_qualitative(palette="Warm") + ggtitle("Gender by group")
+```
+
+
+Analyzing the data
+```{r}
+#Estimating effect sizes 
+df_analysis <- escalc('SMD',
+                      n1i= SAMPLE_SIZE_HC, n2i= SAMPLE_SIZE_SZ,
+                      m1i = PITCH_F0SD_HC_M, m2i = PITCH_F0SD_SZ_M,
+                      sd1i = PITCH_F0SD_HC_SD, sd2i = PITCH_F0SD_SZ_SD,
+                      data = real_data_pitch)
+
+df_analysis <- rename(df_analysis, est_effectsize = yi,est_se=vi)
+```
+
+```{r}
+#Formula fitting the new variable names
+f1_real <- bf(est_effectsize|se(est_se)~1+(1|StudyID))
+
+#Fitting the model
+m1_real <-brm(
+  f1_real,
+  data=df_analysis,
+  family = gaussian,
+  prior = p1,
+  sample_prior = T,
+  backend = "cmdstanr",
+  threads = threading(2),
+  chains = 2,
+  cores = 2,
+  control = list(
+    adapt_delta = 0.9,
+    max_treedepth = 20),
+  stan_model_args = list(stanc_options=list("01"))
+)
+
+print(m1_real)
+
+pp_check(m1_real, ndraws = 1000)
+```
+
+```{r}
+# Plotting the prior-posterior update checks for the real data
+
+#Sample the parameters of interest:
+m1_real_posterior <- as_draws_df(m1_real)
+
+#The prior-posterior update plot for the intercept beta:
+plot1_real <- ggplot(m1_real_posterior) +
+geom_histogram(aes(prior_Intercept), fill="darkblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(b_Intercept), fill="orange", color="black",alpha=0.6, bins = 30) +
+xlab('Intercept') +
+labs(title="Prior-posterior update check of the effect size") +
+theme_classic()
+
+
+plot2_real <- ggplot(m1_real_posterior) +
+geom_histogram(aes(prior_sd_StudyID), fill="darkblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(sd_StudyID__Intercept), fill="orange", color="black",alpha=0.6, bins = 30) +
+xlab('Intercept') +
+labs(title="Prior-posterior update check standard error of the effect size") +
+theme_classic()
+
+grid.arrange(plot1_real,plot2_real)
+```
+
+```{r}
+pp_check(m1_pb,ndraws = 1000) + xlim(-2,2) #publication bias
+pp_check(m1_real, ndraws = 1000) + xlim(-2,2) 
 
 ```
 
