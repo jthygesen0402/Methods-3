@@ -19,9 +19,40 @@ The report for the exam, thus, consists of the answer to all the following promp
 
 Remember: plots are very very important to communicate your process and results.
 
+```{r}
+pacman::p_load(tidyverse,purrr, brms,gridExtra)
+```
+
+
 ## Part I - Simulating data
 
 Use the meta-analysis reported in Parola et al (2020), create a simulated dataset with 100 matched pairs of schizophrenia and controls, each participant producing 10 repeated measures (10 trials with their speech recorded). for each of these "recordings" (data points) produce 10 acoustic measures: 6 from the meta-analysis, 4 with just random noise. Do the same for a baseline dataset including only 10 noise variables. Tip: see the slides for the code. 
+
+```{r}
+
+people <- 200
+trials <- 10
+
+sim_d <- expand.grid( 
+  ID = seq(people/2), 
+   trials = seq(10))
+
+for (i in seq(10)){
+  vt <- paste0("v", seq(1,10))
+}
+
+
+v <- function(x){
+  paste0(rep("v",x), seq(1,x))}
+
+v(10)
+
+sim_d <- tibble(paste0("v", seq(10)), .rows=NULL)
+
+?tibble()
+
+```
+
 
 ## Part II - ML pipeline on simulated data
 
