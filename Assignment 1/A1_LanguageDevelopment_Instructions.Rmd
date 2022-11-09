@@ -84,7 +84,7 @@ Once the pipeline is in place, loop through different sample sizes to assess how
 
 ```{r}
 #Loading in packages
-pacman::p_load(tidyverse, brms, bayesplot, rstanarm, zoom, pak, gridExtra, purrr)
+pacman::p_load(tidyverse, brms, bayesplot, rstanarm, zoom, pak, gridExtra, purrr, Rmisc)
 
 pak::pak("tidyverse/tidyverse")
 library(tidyverse)
@@ -118,9 +118,10 @@ error <- 0.2
 
 Simulating the data
 ```{r}
-set.seed(3)
 
-simulation <- function(n){
+simulation <- function(seed,n){
+  set.seed(seed)
+  
   d <- tibble(diagnosis = rep(c("ASD", "TD"), 
                               each = n/2), ID= seq(n)) %>%
     mutate(intercept=ifelse(diagnosis=="ASD", 
@@ -145,7 +146,7 @@ simulation <- function(n){
     }
 
 
-df <- simulation(60)
+df <- simulation(3,60)
 ```
 
 
@@ -284,64 +285,106 @@ hypothesis(MLU_2, "diagnosisTD:visit > diagnosisASD:visit")
 Power analysis
 ```{r}
 ## sample size of 60
-#Number of iterations
 n_sim <- 20
 ```
 
 ```{r}
 #List of wanted samplesizes
-samples <- c(30,40,50,60,70,80,90,100)
+samples_sizes <- c(30,40,50,60,70,80,90,100)
 
 
 sample60 <- tibble(seed = 1:n_sim) %>%
-  mutate(d = purrr::map(seed, simulation, n = 60)) %>% 
-  mutate(fit = map2(d, seed, ~update(MLU_2, newdata = .x, seed = .y, iter=10)))
+  mutate(d = map(seed, simulation, n=60)) %>% mutate(fit = map2(d, seed, ~update(MLU_2, newdata = .x, seed = .y, iter=10)))
 
 parameters <- sample60 %>% mutate(estimate = map(fit, ~ as_draws_df(.)))
 
+est_ <- unnest(parameters, estimate)
+```
 
-parameters$`b_diagnosisASD:visit`-parameters$estimate$`b_diagnosisTD:visit`)
 
-parameters$difference
+```{r}
+#Getting the estimate differences between the two groups
+est_$es_diff <- est_$`b_diagnosisASD:visit` - est_$`b_diagnosisTD:visit`
+
+tt <- est_ %>% group_by(seed) %>% dplyr::summarise(mean=mean(es_diff), 
+                                            Q3_u = CI(es_diff)[1], #CI syntax begins with the upper quantile
+                                            Q1_l = CI(es_diff)[3])
+```
+
+
+```{r}
+power <- function(ss){
+  n_sim <- 20
   
-parameters$seed <- as.factor(parameters$seed)
+  samples <- tibble(seed = 1:n_sim) %>%
+  mutate(d = map(seed, simulation, n=ss)) %>% mutate(fit = map2(d, seed, ~update(MLU_2, newdata = .x, seed = .y, iter=10)))
+
+para <- samples %>% mutate(estimate = map(fit, ~ as_draws_df(.)))
+
+no_nest <- unnest(para, estimate)
+
+no_nest$est_diff <- no_nest$`b_diagnosisASD:visit` - no_nest$`b_diagnosisTD:visit`
+
+q_estimates <- no_nest %>% 
+  group_by(seed) %>% 
+  dplyr::summarise(mean=mean(est_diff),
+                   Q3_u = CI(est_diff)[1],
+                   Q1_l = CI(est_diff)[3])
+
+return(q_estimates)
+}
+```
+
+
+```{r}
+#Making a nested df of all the wanted samole sizes
+
+all_samples <- tibble(samplesizes=samples) %>% mutate(m=map(samplesizes, power)) %>% unnest(m)
+
+
+      
+    
+```
 
 
 
+```{r}
+#plotting the differences
+plot <- list(NA)
+
+t <-  all_samples %>%  
+    filter(samplessizes == 30)
+```
+
+
+```{r}
+
+plot_list <- list()
+
+for (i in length(samples_sizes)){
   
-parameters <- parameters %>% 
-  select(-d, -fit) %>% 
-  filter(parameter == c("diagnosisASD:visit","diagnosisTD:visit"))
-
-parameters_diff <- data.frame(seed=NA,diff_Estimate=NA,diff_Est.Error=NA,diff_Q2.5=NA,diff_Q97.5=NA)
-
-for (x in 1:n_sim) {
-  xASD <- parameters %>% 
-    filter(parameter=="diagnosisASD:visit")
-  
-  xTD <- parameters %>% 
-    filter(parameter=="diagnosisTD:visit")
-  
-parameters_diff <-rbind(parameters_diff,data.frame(seed=xASD$seed[x], 
-                                                     diff_Estimate=xTD$Estimate[x]-xASD$Estimate[x],
-                                                     diff_Est.Error=xTD$Est.Error[x]-xASD$Est.Error[x],
-                                                     diff_Q2.5=xTD$Q2.5[x]-xASD$Q2.5[x],
-                                                     diff_Q97.5=xTD$Q97.5[x]-xASD$Q97.5[x])) %>% 
-    na.omit()
-  
-} 
-
-parameters_diff %>% 
-  ggplot(aes(x = seed, y = diff_Estimate, ymin = diff_Q2.5, ymax = diff_Q97.5)) +
-  geom_hline(yintercept = c(0, .5), color = "white") +
-  geom_pointrange(fatten = 1/2) +
-  labs(x = "seed (i.e., simulation index)",
+    variable <-  all_samples %>%  
+    filter(samplesizes == samples_sizes[i]) %>% 
+    ggplot(aes(x = seed, y = mean, ymin = Q3_u   , ymax = Q1_l)) +
+    geom_hline(yintercept = c(0, .5), color = "pink") +
+    geom_pointrange(fatten = 1/2) +
+    labs(x = "seed",
        y = expression(beta[1]))
+   
+  
+  }
 
-parameters_diff %>% 
-  mutate(check = ifelse(diff_Q2.5 > 0, 1, 0)) %>% 
+
+```
+
+
+```{r}
+tt %>% 
+  mutate(check = ifelse(Q1_l > 0, 1, 0)) %>% 
   summarise(power = mean(check))
 ```
+
+
 
 
 
