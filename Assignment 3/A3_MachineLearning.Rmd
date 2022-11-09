@@ -25,6 +25,10 @@ The report for the exam, thus, consists of the answer to all the following promp
 
 Remember: plots are very very important to communicate your process and results.
 
+```{r}
+pacman::p_load(tidyverse,purrr, brms,gridExtra)
+```
+
 
 
 ## Part I - Simulating data
@@ -34,9 +38,35 @@ Tip: see the slides for the code.
 
 ```{r}
 
-expand grid -> seq (1, n/2,) #give me pairs
+expandgrid -> seq (1, n/2,) #give me pairs
 ```
 
+
+
+```{r}
+
+people <- 200
+trials <- 10
+
+sim_d <- expand.grid( 
+  ID = seq(people/2), 
+   trials = seq(10))
+
+for (i in seq(10)){
+  vt <- paste0("v", seq(1,10))
+}
+
+
+v <- function(x){
+  paste0(rep("v",x), seq(1,x))}
+
+v(10)
+
+sim_d <- tibble(paste0("v", seq(10)), .rows=NULL)
+
+?tibble()
+
+```
 
 
 ## Part II - ML pipeline on simulated data
