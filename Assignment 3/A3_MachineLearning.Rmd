@@ -25,12 +25,10 @@ The report for the exam, thus, consists of the answer to all the following promp
 
 Remember: plots are very very important to communicate your process and results.
 
-<<<<<<< HEAD
 ```{r}
 pacman::p_load(tidyverse,purrr, brms,gridExtra)
 ```
-=======
->>>>>>> d8bb5b52f0bddeea65ebbc5be26304c43052e4ab
+
 
 
 ## Part I - Simulating data
@@ -40,7 +38,7 @@ Tip: see the slides for the code.
 
 ```{r}
 
-expand grid -> seq (1, n/2,) #give me pairs
+expandgrid -> seq (1, n/2,) #give me pairs
 ```
 
 
