@@ -25,12 +25,9 @@ The report for the exam, thus, consists of the answer to all the following promp
 
 Remember: plots are very very important to communicate your process and results.
 
-<<<<<<< HEAD
 ```{r}
 pacman::p_load(tidyverse,purrr, brms,gridExtra)
 ```
-=======
->>>>>>> d8bb5b52f0bddeea65ebbc5be26304c43052e4ab
 
 
 ## Part I - Simulating data
@@ -39,26 +36,31 @@ Use the meta-analysis reported in Parola et al (2020), *create a simulated datas
 Tip: see the slides for the code. 
 
 ```{r}
-
+#sigurds notes
 expand grid -> seq (1, n/2,) #give me pairs
 ```
 
 
 
 ```{r}
-
+#Simulating the data
 people <- 200
 trials <- 10
+
+for (i in seq(10)){
+  sim_d[,i] <- paste0("v", seq(1,10))
+}
 
 sim_d <- expand.grid( 
   ID = seq(people/2), 
    trials = seq(10))
 
-for (i in seq(10)){
-  vt <- paste0("v", seq(1,10))
-}
+?double()
+
+```
 
 
+```{r}
 v <- function(x){
   paste0(rep("v",x), seq(1,x))}
 
@@ -66,7 +68,6 @@ v(10)
 
 sim_d <- tibble(paste0("v", seq(10)), .rows=NULL)
 
-?tibble()
 
 ```
 
@@ -93,3 +94,10 @@ Bonus question: replace the bayesian multilevel regression with a different algo
 Download the empirical dataset from brightspace and apply your ML pipeline to the new data, adjusting where needed. *Warning*: in the simulated dataset we only had 10 features, now you have many more! Such is the life of the ML practitioner. Consider the impact a higher number of features will have on your ML inference, and decide whether you need to cut down the number of features before running the pipeline (or alternatively expand the pipeline to add feature selection).
 
 Data: https://www.dropbox.com/s/7ky1axvea33lgye/Ass3_empiricalData1.csv?dl=0
+
+```{r}
+
+```
+
+
+
