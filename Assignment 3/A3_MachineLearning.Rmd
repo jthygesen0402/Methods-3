@@ -44,27 +44,29 @@ expandgrid -> seq (1, n/2,) #give me pairs
 
 
 ```{r}
-
 people <- 200
 trials <- 10
 
 sim_d <- expand.grid( 
   ID = seq(people/2), 
-   trials = seq(10))
+   trials = seq(10)
+  )
 
+ef <- data.frame(Map(rnorm, people, trials, sd=trials)) %>% mutate(ID = seq(1:people))
+
+names(sim_d) <- c(paste("v", seq(1,10)),"ID")
+
+
+```
+
+
+```{r}
 for (i in seq(10)){
-  vt <- paste0("v", seq(1,10))
+  vt = paste0("v", seq(1,10))
 }
 
 
-v <- function(x){
-  paste0(rep("v",x), seq(1,x))}
-
-v(10)
-
 sim_d <- tibble(paste0("v", seq(10)), .rows=NULL)
-
-?tibble()
 
 ```
 
