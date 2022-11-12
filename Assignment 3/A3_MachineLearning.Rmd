@@ -57,14 +57,6 @@ for (i in seq(10)){
 }
 
 
-v <- function(x){
-  paste0(rep("v",x), seq(1,x))}
-
-v(10)
-
-sim_d <- tibble(paste0("v", seq(10)), .rows=NULL)
-
-?tibble()
 
 ```
 
