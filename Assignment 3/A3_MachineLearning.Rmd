@@ -73,6 +73,8 @@ individual_val <-
 sim_d[vars] <- NA
 
 map()
+
+view(sim_d)
 ```
 
 
