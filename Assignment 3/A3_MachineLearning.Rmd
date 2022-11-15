@@ -37,13 +37,10 @@ Use the meta-analysis reported in Parola et al (2020), *create a simulated datas
 Tip: see the slides for the code. 
 
 
-
-
 ```{r}
 #sigurds notes
 expand grid -> seq (1, n/2,) #give me pairs
 ```
-
 
 
 ```{r}
@@ -52,6 +49,25 @@ people <- 200
 trials <- 10
 mean_pop_effect <- 2
 individual_sd <- 1.5
+
+
+EffectsMeans_inform <- c(0.25,-0.55,-0.75,-1.26,0.05,1.89,0,0,0,0)
+EffectsSD_inform <- c(0.5, 0.29, 0.39,0.63,0.59,0.62,1,1,1,1)
+
+EffectsMean_noise <- rep(0,10)
+EffectsSD_inform <- c(0.5, 0.25, 0.375, 0.625, 0.55,1,1,1,1,1)
+
+Error <- 0.5
+
+true_val <- function(means, SDs){
+  true_df <- data.frame(Map(rnorm, n=1, mean=means, sd=SDs))
+  names(true_df) <- c(paste0("v", seq(10),"_true"))
+  true_df <- as_tibble(true_df)
+}
+
+
+sim_d <- data.frame( 
+  ID = seq(people/2))
 
 #for (i in seq(10)){
   sim_d[,i] <- paste0("v", seq(1,10))
@@ -88,12 +104,16 @@ sim_d <- sim_d %>% c( paste0(rep("v"), seq(1,10)))
 v <- function(x){
   paste0(rep("v",x), seq(1,x))}
 
-v(10)
+sim_d$values <- map(EffectsMeans_inform, true_val, SDs=EffectsSD_inform)
 
-sim_d <- tibble(paste0("v", seq(10)), .rows=NULL)
+sim_d <- unnest(sim_d, cols = values)
+
+
+trial <- expand.grid(ID=seq(people/2),trial=seq(1,10))
 
 
 
+sim_d <- merge(sim_d,trial) 
 ```
 
 
@@ -120,9 +140,9 @@ Download the empirical dataset from brightspace and apply your ML pipeline to th
 
 Data: https://www.dropbox.com/s/7ky1axvea33lgye/Ass3_empiricalData1.csv?dl=0
 
+
 ```{r}
 
 ```
-
 
 
