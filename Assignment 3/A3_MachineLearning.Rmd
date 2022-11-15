@@ -27,6 +27,7 @@ Remember: plots are very very important to communicate your process and results.
 
 ```{r}
 pacman::p_load(tidyverse,purrr, brms,gridExtra)
+set.seed(3)
 ```
 
 
@@ -44,13 +45,21 @@ trials <- 10
 EffectsMeans_inform <- c(0.25,-0.55,-0.75,-1.26,0.05,1.89,0,0,0,0)
 EffectsSD_inform <- c(0.5, 0.29, 0.39,0.63,0.59,0.62,1,1,1,1)
 
-EffectsMean_noise <- rep(0,10)
-EffectsSD_inform <- c(0.5, 0.25, 0.375, 0.625, 0.55,1,1,1,1,1)
+EffectsMeans_noise <- rep(0,10)
+EffectsSD_noise <- rep(1,10)
 
-Error <- 0.5
+TrialSD <- 0.5
+Error <- 0.2
+
+true_val <- function(means, SDs){
+  true_df <- data.frame(Map(rnorm, n=1, mean=means, sd=SDs))
+  names(true_df) <- c(paste0("v", seq(10)))
+  true_df <- as_tibble(true_df)
+}
 ```
 
 
+## Simulation of informed data
 ```{r}
 <<<<<<< HEAD
 people <- 200
@@ -79,53 +88,46 @@ sim_d <- tibble(paste0("v", seq(10)), .rows=NULL)
 
 =======
 #Making a df of individual effect sizes across variables (drawn from "true" means)
-true_val <- function(means, SDs){
-  true_df <- data.frame(Map(rnorm, n=1, mean=means, sd=SDs))
-  names(true_df) <- c(paste0("v", seq(10),"_true"))
-  true_df <- as_tibble(true_df)
-}
-
-
 sim_d <- data.frame( 
   ID = seq(people/2))
 
 sim_d$values <- map(EffectsMeans_inform, true_val, SDs=EffectsSD_inform) #map effect_means on the true_df as a nested df
 
 sim_d <- unnest(sim_d, cols = values) #Now we have a df with one effect size per variable per participant
-
-people <- 200
-trials <- 10
-
-EffectsMeans_inform <- c(0.25,-0.55,-0.75,-1.26,0.05,1.89,0,0,0,0)
-EffectsSD_inform <- c(0.5, 0.29, 0.39,0.63,0.59,0.62,1,1,1,1)
-
-EffectsMean_noise <- rep(0,10)
-EffectsSD_inform <- c(0.5, 0.25, 0.375, 0.625, 0.55,1,1,1,1,1)
-
-Error <- 0.5
-
-true_val <- function(means, SDs){
-  true_df <- data.frame(Map(rnorm, n=1, mean=means, sd=SDs))
-  names(true_df) <- c(paste0("v", seq(10),"_true"))
-  true_df <- as_tibble(true_df)
-}
-
-
+```
 
 ```{r}
  # Adding trails
-trial <- seq(1,10)
-sim_d <- data.frame( 
-  ID = seq(people/2))
-
-sim_d$values <- map(EffectsMeans_inform, true_val, SDs=EffectsSD_inform)
-
-sim_d <- unnest(sim_d, cols = values)
-
 trial <- expand.grid(ID=seq(people/2),trial=seq(1,10))
 
 sim_d <- merge(sim_d,trial) 
+<<<<<<< HEAD
 >>>>>>> 59fe6b2bb2abb686e5ec2043e7ffa1f57b7100f1
+=======
+
+sim_d <- sim_d %>% rowwise %>% mutate(across(starts_with("v"), ~rnorm(1, mean = rnorm(1,mean=.x, sd=TrialSD), sd = Error), .names="{.col}_obs"))
+
+sd(sim_d$v1_obs)
+```
+
+## Simulation of noise data
+```{r}
+sim_d_noise <- data.frame( 
+  ID = seq(people/2))
+
+sim_d_noise$values <- map(EffectsMeans_noise, true_val, SDs=EffectsSD_noise) #map effect_means on the true_df as a nested df
+
+sim_d_noise <- unnest(sim_d_noise, cols = values) #Now we have a df with one effect size per variable per participant
+```
+
+```{r}
+ # Adding trails
+trial <- expand.grid(ID=seq(people/2),trial=seq(1,10))
+
+sim_d_noise <- merge(sim_d_noise,trial) 
+
+sim_d_noise <- sim_d_noise %>% rowwise %>% mutate(across(starts_with("v"), ~rnorm(1, mean = rnorm(1,mean=.x, sd=TrialSD), sd = Error), .names="{.col}_obs"))
+>>>>>>> 881b49b7a2f5c3f6ba10835baae8956281df140c
 ```
 
 
