@@ -50,21 +50,30 @@ trials <- 10
 
 sim_d <- expand.grid( 
   ID = seq(people/2), 
+  Diagnosis = c("SZ", "HC"),
    trials = seq(10))
+
+
+variables <- paste0("v", seq(10), .rows=NULL)
+
+sim_d[variables] <-  'NA'
+
 
 for (i in seq(10)){
   vt <- paste0("v", seq(1,10))
 }
 
+(0.51+0.64)/4
 
-v <- function(x){
-  paste0(rep("v",x), seq(1,x))}
+##Spech rate
+-0.75+1.51 ## = 0.76
+-0.75-0.04 ##=-.79
+(0.76+0.79)/4 ##= 0.39
 
-v(10)
-
-sim_d <- tibble(paste0("v", seq(10)), .rows=NULL)
-
-?tibble()
+##Proportion of spoken time
+-1.26+2.26 ## =1
+-1.26 -0.25 ##=-1.51
+(1+1.51)/4 ##0.63
 
 ```
 
