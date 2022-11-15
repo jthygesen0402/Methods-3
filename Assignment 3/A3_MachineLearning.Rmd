@@ -103,7 +103,7 @@ sim_d_noise <- merge(sim_d_noise,trial)
 
 sim_d_noise <- sim_d_noise %>% rowwise %>% mutate(across(starts_with("v"), ~rnorm(1, mean = rnorm(1,mean=.x, sd=TrialSD), sd = Error), .names="{.col}_obs"))
 
-?mutate_at()
+
 ```
 
 
