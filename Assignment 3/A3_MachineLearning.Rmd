@@ -27,6 +27,7 @@ Remember: plots are very very important to communicate your process and results.
 
 ```{r}
 pacman::p_load(tidyverse,purrr, brms,gridExtra)
+set.seed(3)
 ```
 
 
@@ -75,7 +76,9 @@ trial <- expand.grid(ID=seq(people/2),trial=seq(1,10))
 
 sim_d <- merge(sim_d,trial) 
 
-sim_d <- sim_d %>% rowwise %>% mutate(across(starts_with("v"), ~rnorm(1, mean = .x, sd = TrialSD), .names="{.col}_obs"))
+sim_d <- sim_d %>% rowwise %>% mutate(across(starts_with("v"), ~rnorm(1, mean = rnorm(1,mean=.x, sd=TrialSD), sd = Error), .names="{.col}_obs"))
+
+sd(sim_d$v1_obs)
 ```
 
 ## Simulation of noise data
@@ -94,7 +97,7 @@ trial <- expand.grid(ID=seq(people/2),trial=seq(1,10))
 
 sim_d_noise <- merge(sim_d_noise,trial) 
 
-sim_d_noise <- sim_d_noise %>% rowwise %>% mutate(across(starts_with("v"), ~rnorm(1, mean = .x, sd = TrialSD), .names="{.col}_obs"))
+sim_d_noise <- sim_d_noise %>% rowwise %>% mutate(across(starts_with("v"), ~rnorm(1, mean = rnorm(1,mean=.x, sd=TrialSD), sd = Error), .names="{.col}_obs"))
 ```
 
 
