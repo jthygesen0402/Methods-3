@@ -30,6 +30,7 @@ pacman::p_load(tidyverse,purrr, brms,gridExtra)
 ```
 
 
+
 ## Part I - Simulating data
 
 Use the meta-analysis reported in Parola et al (2020), *create a simulated dataset* with 100 matched pairs of schizophrenia and controls, each participant producing 10 repeated measures (10 trials with their speech recorded). for each of these "recordings" (data points) produce 10 acoustic measures: 6 from the meta-analysis, 4 with just random noise. Do the same for a baseline dataset including only 10 noise variables. 
