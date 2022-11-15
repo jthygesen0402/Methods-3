@@ -35,6 +35,9 @@ pacman::p_load(tidyverse,purrr, brms,gridExtra)
 Use the meta-analysis reported in Parola et al (2020), *create a simulated dataset* with 100 matched pairs of schizophrenia and controls, each participant producing 10 repeated measures (10 trials with their speech recorded). for each of these "recordings" (data points) produce 10 acoustic measures: 6 from the meta-analysis, 4 with just random noise. Do the same for a baseline dataset including only 10 noise variables. 
 Tip: see the slides for the code. 
 
+
+
+
 ```{r}
 #sigurds notes
 expand grid -> seq (1, n/2,) #give me pairs
@@ -46,16 +49,24 @@ expand grid -> seq (1, n/2,) #give me pairs
 #Simulating the data
 people <- 200
 trials <- 10
+mean_pop_effect <- 2
+individual_sd <- 1.5
 
-for (i in seq(10)){
+#for (i in seq(10)){
   sim_d[,i] <- paste0("v", seq(1,10))
 }
 
-sim_d <- expand.grid( 
-  ID = seq(people/2), 
-   trials = seq(10))
 
-?double()
+
+sim_d <- data.frame(Map(rnorm, 
+                        n=people, 
+                        mean=mean_pop_effect, 
+                        sd = individual_sd)) %>% 
+  mutate(ID=seq(1:people))
+
+
+sim_d <- sim_d %>% c( paste0(rep("v"), seq(1,10)))
+
 
 ```
 
