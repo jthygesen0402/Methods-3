@@ -69,11 +69,8 @@ sim_d <- unnest(sim_d, cols = values)
 trial <- seq(1,10)
 >>>>>>> f27f2364faa13cbf16357f39062cf4c0ffcab8b0
 
-sim_d <- expand(sim_d, nesting(ID,c(paste0("v", seq(10),"_true")) , trial)
+sim_d <- expand(sim_d, nesting(ID, v1_true), trial)
 
-individual_val <- 
-
-sim_d[vars] <- NA
 
 map()
 
