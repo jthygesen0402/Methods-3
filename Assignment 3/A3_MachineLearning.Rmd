@@ -38,9 +38,18 @@ Tip: see the slides for the code.
 
 
 ```{r}
+#sigurds notes
+expand grid -> seq (1, n/2,) #give me pairs
+```
 
+
+```{r}
+#Simulating the data
 people <- 200
 trials <- 10
+mean_pop_effect <- 2
+individual_sd <- 1.5
+
 
 EffectsMeans_inform <- c(0.25,-0.55,-0.75,-1.26,0.05,1.89,0,0,0,0)
 EffectsSD_inform <- c(0.5, 0.29, 0.39,0.63,0.59,0.62,1,1,1,1)
@@ -60,11 +69,49 @@ true_val <- function(means, SDs){
 sim_d <- data.frame( 
   ID = seq(people/2))
 
+#for (i in seq(10)){
+  sim_d[,i] <- paste0("v", seq(1,10))
+}
+
+
+# pause number
+0.05-(-1.23) #= 1.28
+0.05-1.13 #= -1.08
+(1.28+1.08)/4 #=0.59
+
+# pause length
+1.89-0.72 #= 1.17
+1.89-3.21 #= -1.32
+(1.17+1.32)/4 #= 0.6225
+
+
+
+
+sim_d <- data.frame(Map(rnorm, 
+                        n=people, 
+                        mean=mean_pop_effect, 
+                        sd = individual_sd)) %>% 
+  mutate(ID=seq(1:people))
+
+
+sim_d <- sim_d %>% c( paste0(rep("v"), seq(1,10)))
+
+
+```
+
+
+```{r}
+v <- function(x){
+  paste0(rep("v",x), seq(1,x))}
+
 sim_d$values <- map(EffectsMeans_inform, true_val, SDs=EffectsSD_inform)
 
 sim_d <- unnest(sim_d, cols = values)
 
+
 trial <- expand.grid(ID=seq(people/2),trial=seq(1,10))
+
+
 
 sim_d <- merge(sim_d,trial) 
 ```
@@ -92,3 +139,10 @@ Bonus question: replace the bayesian multilevel regression with a different algo
 Download the empirical dataset from brightspace and apply your ML pipeline to the new data, adjusting where needed. *Warning*: in the simulated dataset we only had 10 features, now you have many more! Such is the life of the ML practitioner. Consider the impact a higher number of features will have on your ML inference, and decide whether you need to cut down the number of features before running the pipeline (or alternatively expand the pipeline to add feature selection).
 
 Data: https://www.dropbox.com/s/7ky1axvea33lgye/Ass3_empiricalData1.csv?dl=0
+
+
+```{r}
+
+```
+
+
