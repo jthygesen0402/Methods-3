@@ -55,17 +55,15 @@ sim_d <- expand.grid(
 for (i in seq(10)){
   vt <- paste0("v", seq(1,10))
 }
+# pause number
+0.05-(-1.23) #= 1.28
+0.05-1.13 #= -1.08
+(1.28+1.08)/4 #=0.59
 
-
-v <- function(x){
-  paste0(rep("v",x), seq(1,x))}
-
-v(10)
-
-sim_d <- tibble(paste0("v", seq(10)), .rows=NULL)
-
-?tibble()
-
+# pause length
+1.89-0.72 #= 1.17
+1.89-3.21 #= -1.32
+(1.17+1.32)/4 #= 0.6225
 ```
 
 
