@@ -52,6 +52,30 @@ Error <- 0.5
 
 
 ```{r}
+people <- 200
+trials <- 10
+
+sim_d <- expand.grid( 
+  ID = seq(people/2), 
+   trials = seq(10)
+  )
+
+ef <- data.frame(Map(rnorm, people, trials, sd=trials)) %>% mutate(ID = seq(1:people))
+
+names(sim_d) <- c(paste("v", seq(1,10)),"ID")
+
+
+```
+
+
+```{r}
+for (i in seq(10)){
+  vt = paste0("v", seq(1,10))
+}
+
+
+sim_d <- tibble(paste0("v", seq(10)), .rows=NULL)
+
 #Making a df of individual effect sizes across variables (drawn from "true" means)
 true_val <- function(means, SDs){
   true_df <- data.frame(Map(rnorm, n=1, mean=means, sd=SDs))
@@ -83,7 +107,7 @@ true_val <- function(means, SDs){
   names(true_df) <- c(paste0("v", seq(10),"_true"))
   true_df <- as_tibble(true_df)
 }
-
+```
 
 
 ```{r}
@@ -99,6 +123,7 @@ sim_d <- unnest(sim_d, cols = values)
 trial <- expand.grid(ID=seq(people/2),trial=seq(1,10))
 
 sim_d <- merge(sim_d,trial) 
+
 ```
 
 
