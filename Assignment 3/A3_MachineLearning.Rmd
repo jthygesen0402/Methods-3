@@ -59,32 +59,9 @@ true_val <- function(means, SDs){
 ```
 
 
-## Simulation of informed data
-```{r}
-people <- 200
-trials <- 10
-
-sim_d <- expand.grid( 
-  ID = seq(people/2), 
-   trials = seq(10)
-  )
-
-ef <- data.frame(Map(rnorm, people, trials, sd=trials)) %>% mutate(ID = seq(1:people))
-
-names(sim_d) <- c(paste("v", seq(1,10)),"ID")
-
-
-```
-
+## Simulation of *informed data*
 
 ```{r}
-for (i in seq(10)){
-  vt = paste0("v", seq(1,10))
-}
-
-
-sim_d <- tibble(paste0("v", seq(10)), .rows=NULL)
-
 #Making a df of individual effect sizes across variables (drawn from "true" means)
 sim_d <- data.frame( 
   ID = seq(people/2))
@@ -92,29 +69,9 @@ sim_d <- data.frame(
 sim_d$values <- map(EffectsMeans_inform, true_val, SDs=EffectsSD_inform) #map effect_means on the true_df as a nested df
 
 sim_d <- unnest(sim_d, cols = values) #Now we have a df with one effect size per variable per participant
-<<<<<<< HEAD
 
-people <- 200
-trials <- 10
-
-EffectsMeans_inform <- c(0.25,-0.55,-0.75,-1.26,0.05,1.89,0,0,0,0)
-EffectsSD_inform <- c(0.5, 0.29, 0.39,0.63,0.59,0.62,1,1,1,1)
-
-EffectsMean_noise <- rep(0,10)
-EffectsSD_inform <- c(0.5, 0.25, 0.375, 0.625, 0.55,1,1,1,1,1)
-
-Error <- 0.5
-
-true_val <- function(means, SDs){
-  true_df <- data.frame(Map(rnorm, n=1, mean=means, sd=SDs))
-  names(true_df) <- c(paste0("v", seq(10),"_true"))
-  true_df <- as_tibble(true_df)
-}
 ```
 
-=======
-```
->>>>>>> 1bc09d794a3185bd1665c2cc1ce3facf9739ee42
 
 ```{r}
  # Adding trails
@@ -122,14 +79,13 @@ trial <- expand.grid(ID=seq(people/2),trial=seq(1,10))
 
 sim_d <- merge(sim_d,trial) 
 
-<<<<<<< HEAD
-=======
 sim_d <- sim_d %>% rowwise %>% mutate(across(starts_with("v"), ~rnorm(1, mean = rnorm(1,mean=.x, sd=TrialSD), sd = Error), .names="{.col}_obs"))
 
 sd(sim_d$v1_obs)
 ```
 
-## Simulation of noise data
+
+## Simulation of *noise data*
 ```{r}
 sim_d_noise <- data.frame( 
   ID = seq(people/2))
@@ -146,7 +102,8 @@ trial <- expand.grid(ID=seq(people/2),trial=seq(1,10))
 sim_d_noise <- merge(sim_d_noise,trial) 
 
 sim_d_noise <- sim_d_noise %>% rowwise %>% mutate(across(starts_with("v"), ~rnorm(1, mean = rnorm(1,mean=.x, sd=TrialSD), sd = Error), .names="{.col}_obs"))
->>>>>>> 1bc09d794a3185bd1665c2cc1ce3facf9739ee42
+
+?mutate_at()
 ```
 
 
