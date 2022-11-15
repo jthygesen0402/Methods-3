@@ -273,6 +273,8 @@ fem <- d_df %>% select(female, male,StudyID, Total)
 fem <- melt(fem, id.vars="StudyID")
 ```
 
+<<<<<<< HEAD
+=======
 ```{r}
 #plotting gender by group
 ggplot() + 
@@ -390,6 +392,7 @@ ggplot() +
            stat="identity", position="dodge", width=0.5, colour="black",
            aes(x=StudyID, y=value, fill=variable)) + scale_fill_discrete_qualitative(palette="Warm") + ggtitle("Gender by group")
 
+>>>>>>> 26beb9ac82c723e6468025d8004ecb9cace23bd9
 ```
 
 ```{r}

@@ -385,7 +385,11 @@ for (i in length(samples_sizes)){
   
 }
 
+<<<<<<< HEAD
 
+=======
+facetw
+>>>>>>> 59fe6b2bb2abb686e5ec2043e7ffa1f57b7100f1
 
 
 ```

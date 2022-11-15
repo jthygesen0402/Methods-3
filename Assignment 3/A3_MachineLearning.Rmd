@@ -36,14 +36,23 @@ pacman::p_load(tidyverse,purrr, brms,gridExtra)
 Use the meta-analysis reported in Parola et al (2020), *create a simulated dataset* with 100 matched pairs of schizophrenia and controls, each participant producing 10 repeated measures (10 trials with their speech recorded). for each of these "recordings" (data points) produce 10 acoustic measures: 6 from the meta-analysis, 4 with just random noise. Do the same for a baseline dataset including only 10 noise variables. 
 Tip: see the slides for the code. 
 
-```{r}
 
-expandgrid -> seq (1, n/2,) #give me pairs
+```{r}
+people <- 200
+trials <- 10
+
+EffectsMeans_inform <- c(0.25,-0.55,-0.75,-1.26,0.05,1.89,0,0,0,0)
+EffectsSD_inform <- c(0.5, 0.29, 0.39,0.63,0.59,0.62,1,1,1,1)
+
+EffectsMean_noise <- rep(0,10)
+EffectsSD_inform <- c(0.5, 0.25, 0.375, 0.625, 0.55,1,1,1,1,1)
+
+Error <- 0.5
 ```
 
 
-
 ```{r}
+<<<<<<< HEAD
 people <- 200
 trials <- 10
 
@@ -68,6 +77,55 @@ for (i in seq(10)){
 
 sim_d <- tibble(paste0("v", seq(10)), .rows=NULL)
 
+=======
+#Making a df of individual effect sizes across variables (drawn from "true" means)
+true_val <- function(means, SDs){
+  true_df <- data.frame(Map(rnorm, n=1, mean=means, sd=SDs))
+  names(true_df) <- c(paste0("v", seq(10),"_true"))
+  true_df <- as_tibble(true_df)
+}
+
+
+sim_d <- data.frame( 
+  ID = seq(people/2))
+
+sim_d$values <- map(EffectsMeans_inform, true_val, SDs=EffectsSD_inform) #map effect_means on the true_df as a nested df
+
+sim_d <- unnest(sim_d, cols = values) #Now we have a df with one effect size per variable per participant
+
+people <- 200
+trials <- 10
+
+EffectsMeans_inform <- c(0.25,-0.55,-0.75,-1.26,0.05,1.89,0,0,0,0)
+EffectsSD_inform <- c(0.5, 0.29, 0.39,0.63,0.59,0.62,1,1,1,1)
+
+EffectsMean_noise <- rep(0,10)
+EffectsSD_inform <- c(0.5, 0.25, 0.375, 0.625, 0.55,1,1,1,1,1)
+
+Error <- 0.5
+
+true_val <- function(means, SDs){
+  true_df <- data.frame(Map(rnorm, n=1, mean=means, sd=SDs))
+  names(true_df) <- c(paste0("v", seq(10),"_true"))
+  true_df <- as_tibble(true_df)
+}
+
+
+
+```{r}
+ # Adding trails
+trial <- seq(1,10)
+sim_d <- data.frame( 
+  ID = seq(people/2))
+
+sim_d$values <- map(EffectsMeans_inform, true_val, SDs=EffectsSD_inform)
+
+sim_d <- unnest(sim_d, cols = values)
+
+trial <- expand.grid(ID=seq(people/2),trial=seq(1,10))
+
+sim_d <- merge(sim_d,trial) 
+>>>>>>> 59fe6b2bb2abb686e5ec2043e7ffa1f57b7100f1
 ```
 
 
