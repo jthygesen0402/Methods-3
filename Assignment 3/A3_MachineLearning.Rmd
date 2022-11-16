@@ -77,9 +77,21 @@ trial <- expand.grid(ID=seq(people/2),trial=seq(1,10))
 sim_d <- merge(sim_d,trial) 
 
 sim_d <- sim_d %>% rowwise %>% mutate(across(starts_with("v"), ~rnorm(1, mean = rnorm(1,mean=.x, sd=TrialSD), sd = Error), .names="{.col}_obs"))
-
-sd(sim_d$v1_obs)
 ```
+
+```{r}
+#Adding groups
+group <- expand.grid(ID=seq(people/2),group=c("SZ", "HC"))
+
+sim_d <- merge(sim_d,group) 
+
+
+
+ifelse(sim_d$group=="SZ", 
+       (sim_d$v1_obs/2),
+       -(sim_d$v1_obs/2))
+```
+
 
 ## Simulation of noise data
 ```{r}
@@ -93,8 +105,6 @@ sim_d_noise <- unnest(sim_d_noise, cols = values) #Now we have a df with one eff
 
 ```{r}
  # Adding trails
-trial <- expand.grid(ID=seq(people/2),trial=seq(1,10))
-
 sim_d_noise <- merge(sim_d_noise,trial) 
 
 sim_d_noise <- sim_d_noise %>% rowwise %>% mutate(across(starts_with("v"), ~rnorm(1, mean = rnorm(1,mean=.x, sd=TrialSD), sd = Error), .names="{.col}_obs"))
