@@ -26,16 +26,7 @@ The report for the exam, thus, consists of the answer to all the following promp
 Remember: plots are very very important to communicate your process and results.
 
 ```{r}
-pacman::p_load(tidyverse,purrr, brms, cmdstanr, bayesplot, rstanarm, , viridis, gridExtra, RColorBrewer, reshape2, cli, devtools)
-
-devtools::install_github("tidymodels/recipes")
-library(recipes)
-#install.packages("recipes")
-#library(recipes)
-#sessionInfo()
-
-#install.packages("tidymodels")
-#library(tidymodels)
+pacman::p_load(tidyverse,purrr, brms, cmdstanr, bayesplot, rstanarm, , viridis, gridExtra, RColorBrewer, reshape2, cli, devtools, tidymodels)
 
 set.seed(3)
 ```
@@ -71,7 +62,10 @@ EffectsSD_noise <- rep(1,10)
 
 TrialSD <- 0.5
 Error <- 0.2
+```
 
+
+```{r}
 true_val <- function(means, SDs){
   true_df <- data.frame(Map(rnorm, n=1, mean=means, sd=SDs))
   names(true_df) <- c(paste0("v", seq(10)))
@@ -89,25 +83,35 @@ sim_d <- data.frame(
 
 sim_d$values <- map(EffectsMeans_inform, true_val, SDs=EffectsSD_inform) #map effect_means on the true_df as a nested df
 
-sim_d <- unnest(sim_d, cols = values) #Now we have a df with one effect size per variable per participant
+sim_d <- unnest(sim_d, cols = values)#Now we have a df with one effect size per variable per participant
 
 ```
 
 
 ```{r}
  # Adding trails
-trial <- expand.grid(ID=seq(people/2),trial=seq(1,10), group = c("SZ", "HC"))
+trial <- expand.grid(ID=seq(people/2),trial=seq(1,10))
 
 sim_d <- merge(sim_d,trial) 
 
-sim_d <- sim_d %>% rowwise %>% mutate(across(starts_with("v"), ~rnorm(1, mean = rnorm(1,mean=.x, sd=TrialSD), sd = Error), .names="{.col}_obs"))
+sim_d <- sim_d %>% 
+  rowwise%>% 
+  mutate(across(starts_with("v"), ~rnorm(1, mean = rnorm(1,mean=.x, sd=TrialSD), sd = Error), .names="{.col}_obs"))
 
-sd(sim_d$v1_obs)
+#Making matched pairs
+pairs <- expand.grid(group = c("SZ", "HC"), ID=seq(people/2))
+
+sim_d <- merge(sim_d, pairs)
+
 ```
 
+
 ```{r}
-#Differentiating between SZ and HC
-matched_data<- sim_d %>% rowwise %>%  mutate(across(ends_with("_obs"), ~if_else(group == "SZ", (.x/2), -(.x/2)), .names ="{.col}_matched")) %>% select(ID, trial, group, ends_with("_matched"))
+#Differentiating between SZ and HC 
+matched_data<- sim_d %>% 
+  rowwise %>%  
+  mutate(across(ends_with("_obs"), ~if_else(group == "SZ", (.x/2), -(.x/2)), .names ="{.col}_matched")) %>%
+  select(ID, trial, group, ends_with("_matched"))
 
 ```
 
@@ -125,12 +129,25 @@ sim_d_noise <- unnest(sim_d_noise, cols = values) #Now we have a df with one eff
 
 ```{r}
  # Adding trials
-trial <- expand.grid(ID=seq(people/2),trial=seq(1,10),  group = c("SZ", "HC"))
-
 sim_d_noise <- merge(sim_d_noise,trial) 
 
+sim_d_noise <- sim_d_noise %>%
+  rowwise %>% 
+  mutate(across(starts_with("v"), ~rnorm(1, mean = rnorm(1,mean=.x, sd=TrialSD), sd = Error), .names="{.col}_obs"))
 
-sim_d_noise <- sim_d_noise %>% rowwise %>% mutate(across(starts_with("v"), ~rnorm(1, mean = rnorm(1,mean=.x, sd=TrialSD), sd = Error), .names="{.col}_obs"))
+#Making matched pairs
+sim_d_noise <- merge(sim_d_noise, pairs)
+
+```
+
+
+```{r}
+#Differentiating between SZ and HC 
+matched_noise<- sim_d_noise %>% 
+  rowwise %>%  
+  mutate(across(ends_with("_obs"), ~if_else(group == "SZ", (.x/2), -(.x/2)), .names ="{.col}_matched")) %>%
+  select(ID, trial, group, ends_with("_matched"))
+
 
 
 ```
@@ -138,17 +155,30 @@ sim_d_noise <- sim_d_noise %>% rowwise %>% mutate(across(starts_with("v"), ~rnor
 
 #Visualiziing the data :(
 ```{r}
+#Making the df into long format 
+long_df <- matched_data %>%
+  pivot_longer(cols = ends_with("_matched"), names_to = "variable")
 
-sim_plot <- matched_data %>% ggplot(aes(x = v1_obs_matched, colour=group)) +  
-  geom_density() + scale_color_brewer(palette = "Accent") + facet_wrap())
+long_df %>% 
+  ggplot(aes(x = value, colour=group)) +  
+  geom_density() + 
+  scale_color_brewer(palette = "Paired") + 
+  facet_wrap(~variable) + 
+  theme_grey() + 
+  ggtitle("Effect sizes across variables")
 
 
+#Making the df into long format 
+long_df_noise <- matched_noise %>%
+  pivot_longer(cols = ends_with("_matched"), names_to = "variable")
 
-
-```
-
-```{r}
-long_df <- matched_data %>% pivot_longer(names_from = group, values_from = ends_with("_matched"))
+long_df_noise %>% 
+  ggplot(aes(x = value, colour=group)) +  
+  geom_density() + 
+  scale_color_brewer(palette = "Accent") + 
+  facet_wrap(~variable) + 
+  theme_grey() + 
+  ggtitle("Effect sizes across variables on noise data")
 ```
 
 
@@ -176,17 +206,18 @@ Bonus question: replace the bayesian multilevel regression with a different algo
 #Splitting data 80/20
 spl <- sample(seq(people/2), 20)
 
-train_inf <- wide_df %>% subset(!(ID %in% spl))
-test_inf <- wide_df %>% subset(ID %in% spl)
+train_inf <- matched_data %>% subset(!(ID %in% spl))
+test_inf <- matched_data %>% subset(ID %in% spl)
 
 ```
+
 
 ```{r}
 #Centering the training data
 rec_informed <- train_inf %>% recipe(group ~.) %>% 
   update_role(ID, trials, new_role = "Second level") %>%
-  step_scale(all_predictors()) %>%
-  step_center(all_predictors()) %>%
+  step_scale(all_numeric()) %>%
+  step_center(all_numeric()) %>%
   prep(train=train_inf, retain = T)
   
 
@@ -197,21 +228,36 @@ bake(rec_informed, new_data = test_inf)
 
 
 ```{r}
-# Trying to make a pipeline with mlr3
-
-#pacman::p_load(mlr3)
-#task_clas <- as_task_classif(train_inf, target = "group")
 ```
 
 
-#Choosing a classification algorithm
+#Choosing a classification algorithm - Logistic Regression
 ```{r}
+#Setting up the formula(s)
+variables <- train_inf %>% select(c(starts_with("v"))
+                                  
+f1 <- bf(group ~ 1 + variables+ (1+trial|ID))
 
-f1 <- bf(group ~ 1 + ends_with("_matched")+ (1+trials|ID))
 ```
 
 ```{r}
-get_prior(data = )
+m1_prior <-brm(
+  f1,
+  data=train_inf,
+  family = bernoulli(link = "logit"),
+  prior = p1,
+  sample_prior = "only",
+  #backend = "cmdstanr",
+  #threads = threading(2),
+  iter = 2000,
+  chains = 2,
+  cores = 2,
+  control = list(
+    adapt_delta = 0.9,
+    max_treedepth = 20)
+)
+
+m1_prior
 ```
 
 
