@@ -1,13 +1,9 @@
 ---
 title: "A3_MachineLearning"
-author: "Jakob"
+author: "Jakob, Emilie, Gergana & Natasha"
 date: "2022-11-02"
 output: html_document
 ---
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
 
 # The assignment
 
@@ -26,9 +22,21 @@ The report for the exam, thus, consists of the answer to all the following promp
 Remember: plots are very very important to communicate your process and results.
 
 ```{r}
-pacman::p_load(tidyverse,purrr, brms,gridExtra)
+pacman::p_load(tidyverse,purrr, brms, cmdstanr, bayesplot, rstanarm, , viridis, gridExtra, RColorBrewer, reshape2, tidymodels)
+
 set.seed(3)
 ```
+
+```{r}
+color_scheme_set(scheme = "teal")
+```
+
+*update_role* 
+- assign the role of the column 
+update_role(ID, trail, new_role ="second level")
+
+Useful in PCA and when making our recipe
+
 
 
 
@@ -45,49 +53,126 @@ trials <- 10
 EffectsMeans_inform <- c(0.25,-0.55,-0.75,-1.26,0.05,1.89,0,0,0,0)
 EffectsSD_inform <- c(0.5, 0.29, 0.39,0.63,0.59,0.62,1,1,1,1)
 
-EffectsMean_noise <- rep(0,10)
-EffectsSD_inform <- c(0.5, 0.25, 0.375, 0.625, 0.55,1,1,1,1,1)
+EffectsMeans_noise <- rep(0,10)
+EffectsSD_noise <- rep(1,10)
 
-trial_error <- 0.5 #From slides
-m_error <- 0.2
+TrialSD <- 0.5
+Error <- 0.2
 ```
 
 
 ```{r}
-#Making a df of individual effect sizes across variables (drawn from "true" means)
 true_val <- function(means, SDs){
   true_df <- data.frame(Map(rnorm, n=1, mean=means, sd=SDs))
-  names(true_df) <- c(paste0("v", seq(10),"_"))
+  names(true_df) <- c(paste0("v", seq(10)))
   true_df <- as_tibble(true_df)
 }
+```
 
 
+## Simulation of *informed data*
+
+```{r}
+#Making a df of individual effect sizes across variables (drawn from "true" means)
 sim_d <- data.frame( 
   ID = seq(people/2))
 
 sim_d$values <- map(EffectsMeans_inform, true_val, SDs=EffectsSD_inform) #map effect_means on the true_df as a nested df
 
-sim_d <- unnest(sim_d, cols = values) #Now we have a df with one effect size per variable per participant
+sim_d <- unnest(sim_d, cols = values)#Now we have a df with one effect size per variable per participant
+
 ```
 
 
 ```{r}
- # Adding trials
-trial <- seq(1,10)
-sim_d <- data.frame( 
-  ID = seq(people/2))
-
-sim_d$values <- map(EffectsMeans_inform, true_val, SDs=EffectsSD_inform)
-sim_d <- unnest(sim_d, cols = values)
+ # Adding trails
 trial <- expand.grid(ID=seq(people/2),trial=seq(1,10))
 
 sim_d <- merge(sim_d,trial) 
 
-#Redrawing individual effect sizes with trial variability (and measurement error)
-sim_d <- sim_d %>% rowwise %>% mutate(across(starts_with("v"), ~rnorm(1, mean=rnorm(1,mean=.x, sd=trial_error), sd= m_error), .names = "{.col}_obs"))
+sim_d <- sim_d %>% 
+  rowwise%>% 
+  mutate(across(starts_with("v"), ~rnorm(1, mean = rnorm(1,mean=.x, sd=TrialSD), sd = Error), .names="{.col}_obs"))
 
-sim_d_1 <- sim_d %>% rowwise %>% mutate(across(starts_with("v"), ~rnorm(1, mean=.x, sd= trial_error), .names = "{.col}_obs"))
+#Making matched pairs
+pairs <- expand.grid(group = c("SZ", "HC"), ID=seq(people/2))
 
+sim_d <- merge(sim_d, pairs)
+
+```
+
+
+```{r}
+#Differentiating between SZ and HC 
+matched_data<- sim_d %>% 
+  rowwise %>%  
+  mutate(across(ends_with("_obs"), ~if_else(group == "SZ", (.x/2), -(.x/2)), .names ="{.col}_matched")) %>%
+  select(ID, trial, group, ends_with("_matched"))
+
+```
+
+
+
+## Simulation of *noise data*
+```{r}
+sim_d_noise <- data.frame( 
+  ID = seq(people/2))
+
+sim_d_noise$values <- map(EffectsMeans_noise, true_val, SDs=EffectsSD_noise) #map effect_means on the true_df as a nested df
+
+sim_d_noise <- unnest(sim_d_noise, cols = values) #Now we have a df with one effect size per variable per participant
+```
+
+```{r}
+ # Adding trials
+sim_d_noise <- merge(sim_d_noise,trial) 
+
+sim_d_noise <- sim_d_noise %>%
+  rowwise %>% 
+  mutate(across(starts_with("v"), ~rnorm(1, mean = rnorm(1,mean=.x, sd=TrialSD), sd = Error), .names="{.col}_obs"))
+
+#Making matched pairs
+sim_d_noise <- merge(sim_d_noise, pairs)
+
+```
+
+
+```{r}
+#Differentiating between SZ and HC 
+matched_noise<- sim_d_noise %>% 
+  rowwise %>%  
+  mutate(across(ends_with("_obs"), ~if_else(group == "SZ", (.x/2), -(.x/2)), .names ="{.col}_matched")) %>%
+  select(ID, trial, group, ends_with("_matched"))
+
+```
+
+
+#Visualiziing the data :(
+```{r}
+#Making the df into long format 
+long_df <- matched_data %>%
+  pivot_longer(cols = ends_with("_matched"), names_to = "variable")
+
+long_df %>% 
+  ggplot(aes(x = value, colour=group)) +  
+  geom_density() + 
+  scale_color_brewer(palette = "Paired") + 
+  facet_wrap(~variable) + 
+  theme_grey() + 
+  ggtitle("Effect sizes of variables")
+
+
+#Making the df into long format 
+long_df_noise <- matched_noise %>%
+  pivot_longer(cols = ends_with("_matched"), names_to = "variable")
+
+long_df_noise %>% 
+  ggplot(aes(x = value, colour=group)) +  
+  geom_density() + 
+  scale_color_brewer(palette = "Accent") + 
+  facet_wrap(~variable) + 
+  theme_grey() + 
+  ggtitle("Effect sizes of variables on noise data")
 ```
 
 
@@ -95,18 +180,112 @@ sim_d_1 <- sim_d %>% rowwise %>% mutate(across(starts_with("v"), ~rnorm(1, mean=
 ## Part II - ML pipeline on simulated data
 
 On the two simulated datasets (separately) build a machine learning pipeline: 
-i) create a data budget (e.g. balanced training and test sets) 
-ii) pre-process the data (e.g. scaling the features)
-iii) fit and assess a classification algorithm on the training data (e.g. Bayesian multilevel logistic regression)
-iv) assess performance on the test set
-v) discuss whether performance is as expected and feature importance is as expected.
+*i)* create a data budget (e.g. balanced training and test sets) 
+
+*ii)* pre-process the data (e.g. scaling the features)
+
+*iii)* fit and assess a classification algorithm on the training data (e.g. Bayesian multilevel logistic regression)
+
+*iv)* assess performance on the test set
+
+*v)* discuss whether performance is as expected and feature importance is as expected.
+
 
 Bonus question: replace the bayesian multilevel regression with a different algorithm, e.g. SVM or random forest (but really, anything you'd like to try).
 
 
+
+#Data budgetting and preprocessing
 ```{r}
+#Splitting data 80/20
+spl <- sample(seq(people/2), 20)
+
+train_inf <- matched_data %>% subset(!(ID %in% spl))
+test_inf <- matched_data %>% subset(ID %in% spl)
 
 ```
+
+
+```{r}
+#Centering the training data
+rec_informed <- train_inf %>% recipe(group ~.) %>% 
+  update_role(ID, trials, new_role = "Second level") %>%
+  step_scale(all_numeric()) %>%
+  step_center(all_numeric()) %>%
+  prep(train=train_inf, retain = T)
+  
+
+#Using the recipe on the test data
+bake(rec_informed, new_data = test_inf)
+```
+
+
+
+
+
+
+#Choosing a classification algorithm - Logistic Regression
+```{r}
+#Setting up the formula(s)
+f1 <- bf(group ~ 1 + v1_obs_matched+ v2_obs_matched + v3_obs_matched + v4_obs_matched + v5_obs_matched + v6_obs_matched + v7_obs_matched + v8_obs_matched + v9_obs_matched + v10_obs_matched + (1+trial|ID))
+#Group is a function of each of the variables
+
+```
+
+```{r}
+get_prior(data=train_inf, 
+          family = bernoulli, 
+          f1)
+
+p1 <- c(
+  prior(normal(0,1), class=Intercept),
+  prior(normal(0,0.3), class=b), 
+  prior(normal(0,0.3), class= sd)
+)
+```
+
+```{r}
+m1_prior <-brm(
+  f1,
+  data=train_inf,
+  family = bernoulli(link = "logit"),
+  prior = p1,
+  sample_prior = "only",
+  #backend = "cmdstanr",
+  #threads = threading(2),
+  iter = 2000,
+  chains = 2,
+  cores = 2,
+  control = list(
+    adapt_delta = 0.9,
+    max_treedepth = 20)
+)
+
+
+pp_check(m1_prior, ndraws =1000)
+```
+```{r}
+m1 <- brm(
+  f1,
+  data=train_inf,
+  family = bernoulli,
+  prior = p1,
+  sample_prior = T,
+  #backend = "cmdstanr",
+  #threads = threading(2),
+  iter = 2000,
+  chains = 2,
+  cores = 2,
+  control = list(
+    adapt_delta = 0.9,
+    max_treedepth = 20)
+)
+
+m1
+pp_check(m1, ndraws =1000)
+```
+
+
 
 
 ## Part III - Applying the ML pipeline to empirical data
