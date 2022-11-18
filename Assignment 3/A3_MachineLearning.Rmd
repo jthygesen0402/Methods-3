@@ -22,6 +22,7 @@ The report for the exam, thus, consists of the answer to all the following promp
 Remember: plots are very very important to communicate your process and results.
 
 ```{r}
+
 pacman::p_load(tidyverse,purrr, brms, cmdstanr, bayesplot, rstanarm, , viridis, gridExtra, RColorBrewer, reshape2, tidymodels)
 
 set.seed(3)
@@ -162,6 +163,7 @@ long_df %>%
   ggtitle("Effect sizes of variables")
 
 
+
 #Making the df into long format 
 long_df_noise <- matched_noise %>%
   pivot_longer(cols = ends_with("_matched"), names_to = "variable")
@@ -172,7 +174,9 @@ long_df_noise %>%
   scale_color_brewer(palette = "Accent") + 
   facet_wrap(~variable) + 
   theme_grey() + 
+
   ggtitle("Effect sizes of variables on noise data")
+
 ```
 
 
@@ -223,16 +227,22 @@ bake(rec_informed, new_data = test_inf)
 
 
 
-
 #Choosing a classification algorithm - Logistic Regression
 ```{r}
 #Setting up the formula(s)
+
 f1 <- bf(group ~ 1 + v1_obs_matched+ v2_obs_matched + v3_obs_matched + v4_obs_matched + v5_obs_matched + v6_obs_matched + v7_obs_matched + v8_obs_matched + v9_obs_matched + v10_obs_matched + (1+trial|ID))
 #Group is a function of each of the variables
+
+variables <- train_inf %>% select(c(starts_with("v"))
+                                  
+f1 <- bf(group ~ 1 + variables+ (1+trial|ID))
+
 
 ```
 
 ```{r}
+
 get_prior(data=train_inf, 
           family = bernoulli, 
           f1)
@@ -245,6 +255,7 @@ p1 <- c(
 ```
 
 ```{r}
+
 m1_prior <-brm(
   f1,
   data=train_inf,
@@ -262,8 +273,10 @@ m1_prior <-brm(
 )
 
 
+
 pp_check(m1_prior, ndraws =1000)
 ```
+
 ```{r}
 m1 <- brm(
   f1,
@@ -281,9 +294,8 @@ m1 <- brm(
     max_treedepth = 20)
 )
 
-m1
-pp_check(m1, ndraws =1000)
 ```
+
 
 
 
