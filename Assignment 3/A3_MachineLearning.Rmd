@@ -197,7 +197,7 @@ Bonus question: replace the bayesian multilevel regression with a different algo
 
 
 
-#Data budgetting and preprocessing on the simulated data
+#Data budgetting and preprocessing on the informed data
 ```{r}
 #Splitting data 80/20
 spl <- sample(seq(people/2), 20)
@@ -251,7 +251,7 @@ bake(rec_noise, new_data = test_noise)
 
 # Choosing a classification algorithm - Logistic Regression
 ```{r}
-#Setting up the formula(s)
+#Setting up the formula
 
 f1 <- bf(group ~ 1 + v1_obs_matched+ v2_obs_matched + v3_obs_matched + v4_obs_matched + v5_obs_matched + v6_obs_matched + v7_obs_matched + v8_obs_matched + v9_obs_matched + v10_obs_matched + (1+trial|ID))
 #Group is a function of each of the variables
@@ -279,8 +279,8 @@ m1_prior <-brm(
   family = bernoulli(link = "logit"),
   prior = p1,
   sample_prior = "only",
-  backend = "cmdstanr",
-  threads = threading(2),
+  #backend = "cmdstanr",
+  #threads = threading(2),
   iter = 2000,
   chains = 2,
   cores = 2,
@@ -301,8 +301,8 @@ m1 <- brm(
   family = bernoulli,
   prior = p1,
   sample_prior = T,
-  backend = "cmdstanr",
-  threads = threading(2),
+  #backend = "cmdstanr",
+  #threads = threading(2),
   iter = 2000,
   chains = 2,
   cores = 2,
@@ -313,10 +313,11 @@ m1 <- brm(
 
 pp_check(m1, ndraws = 1000)
 m1
-plot(m1)
+#plot(m1)
 ```
+
 ```{r}
-#Prior predictive update checks
+#Prior predictive update checks for the informed data
 m1_posterior <- as_draws_df(m1) 
 
 #The prior-posterior update plot for the intercept beta:
@@ -398,31 +399,133 @@ grid.arrange(plot1, plot2, plot3, plot4, plot5, plot6)
 grid.arrange(plot7, plot8, plot9, plot10)
 ```
 
-## Doing the same thing for the noise data
-```{r}
-m1_prior_only_noise <- update(m1, newdata = train_noise)
 
-m1_noise <- update(m1, newdata = train_noise)
+
+
+## Doing the same thing for the *noise* training data
+```{r}
+m1_noise_train <- update(m1, newdata = train_noise)
+pp_check(m1_noise_train, ndraws=1000)
+print(m1_noise_train)
+
+```
+```{r}
+m1_posterior_noise <- as_draws_df(m1_noise_train) 
+
+#The prior-posterior update plot for the intercept beta:
+plot1_noise <- ggplot(m1_posterior_noise) +
+geom_histogram(aes(prior_Intercept), fill="purple", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(b_v1_obs_matched), fill="green", color="black",alpha=0.6, bins = 30)+
+xlab('Intercept') +
+labs(title="v1: Prior-posterior update check of the noise effect size") +
+theme_classic()
+
+plot2_noise <- ggplot(m1_posterior_noise) +
+geom_histogram(aes(prior_Intercept), fill="purple", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(b_v2_obs_matched), fill="green", color="black",alpha=0.6, bins = 30)+
+xlab('Intercept') +
+labs(title="v2: Prior-posterior update check of the noise effect size") +
+theme_classic()
+
+plot3_noise <- ggplot(m1_posterior_noise) +
+geom_histogram(aes(prior_Intercept), fill="purple", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(b_v3_obs_matched), fill="green", color="black",alpha=0.6, bins = 30)+
+xlab('Intercept') +
+labs(title="v3: Prior-posterior update check of the noise effect size") +
+theme_classic()
+
+plot4_noise <- ggplot(m1_posterior_noise) +
+geom_histogram(aes(prior_Intercept), fill="purple", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(b_v4_obs_matched), fill="green", color="black",alpha=0.6, bins = 30)+
+xlab('Intercept') +
+labs(title="v4: Prior-posterior update check of the noise effect size") +
+theme_classic()
+
+plot5_noise <- ggplot(m1_posterior_noise) +
+geom_histogram(aes(prior_Intercept), fill="purple", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(b_v5_obs_matched), fill="green", color="black",alpha=0.6, bins = 30)+
+xlab('Intercept') +
+labs(title="v5: Prior-posterior update check of the noise effect size") +
+theme_classic()
+
+plot6_noise <- ggplot(m1_posterior_noise) +
+geom_histogram(aes(prior_Intercept), fill="purple", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(b_v6_obs_matched), fill="green", color="black",alpha=0.6, bins = 30)+
+xlab('Intercept') +
+labs(title="v6: Prior-posterior update check of the noise effect size") +
+theme_classic()
+
+plot7_noise <- ggplot(m1_posterior_noise) +
+geom_histogram(aes(prior_Intercept), fill="purple", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(b_v7_obs_matched), fill="green", color="black",alpha=0.6, bins = 30)+
+xlab('Intercept') +
+labs(title="v7: Prior-posterior update check of the noise effect size") +
+theme_classic()
+
+plot8_noise <- ggplot(m1_posterior_noise) +
+geom_histogram(aes(prior_Intercept), fill="purple", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(b_v8_obs_matched), fill="green", color="black",alpha=0.6, bins = 30)+
+xlab('Intercept') +
+labs(title="v_8 Prior-posterior update check of the noise effect size") +
+theme_classic()
+
+plot9_noise <- ggplot(m1_posterior_noise) +
+geom_histogram(aes(prior_Intercept), fill="purple", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(b_v9_obs_matched), fill="green", color="black",alpha=0.6, bins = 30)+
+xlab('Intercept') +
+labs(title="v9: Prior-posterior update check of the noise effect size") +
+theme_classic()
+
+plot10_noise <- ggplot(m1_posterior_noise) +
+geom_histogram(aes(prior_Intercept), fill="purple", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(b_v10_obs_matched), fill="green", color="black",alpha=0.6, bins = 30)+
+xlab('Intercept') + 
+labs(title="v10: Prior-posterior update check of the noise effect size") +
+theme_classic()
+
+```
+
+
+```{r}
+grid.arrange(plot1_noise, plot2_noise, plot3_noise, plot4_noise, plot5_noise, plot6_noise)
+grid.arrange(plot7_noise, plot8_noise, plot9_noise, plot10_noise)
 ```
 
 
 
 
-#Assessing performance on the training data
+
+# Assessing performance on the informed data
 ```{r}
-train_inf$av_pred_perc <- predict(m1)[,1] #new colum with average predictions
+#train
+train_inf$av_pred_perc <- predict(m1)[,1] #new column with average predictions
 train_inf <- train_inf %>% mutate(av_pred =as.factor(ifelse(av_pred_perc < 0.5, "HC", "SZ")))
 
 train_inf$av_pred <- factor(train_inf$av_pred, levels=c('SZ', 'HC'))
-
-levels(train_inf$av_pred)
 ```
 
 ```{r}
+#test
+test_inf$av_pred_perc <- predict(m1)[,1] 
+test_inf <- test_inf %>% mutate(av_pred =as.factor(ifelse(av_pred_perc < 0.5, "HC", "SZ")))
+
+test_inf$av_pred <- factor(test_inf$av_pred, levels=c('SZ', 'HC'))
+```
+
+
+```{r}
+#Train_inf performance
 yardstick::conf_mat(train_inf, 
          truth = group,
          estimate = av_pred,
          dnn = c("Prediction", "Truth"))
+
+#Test_inf performance
+yardstick::conf_mat(test_inf, 
+         truth = group,
+         estimate = av_pred,
+         dnn = c("Prediction", "Truth"))
+
 ```
 
 
