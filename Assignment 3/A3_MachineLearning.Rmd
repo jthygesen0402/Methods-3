@@ -279,8 +279,8 @@ m1_prior <-brm(
   family = bernoulli(link = "logit"),
   prior = p1,
   sample_prior = "only",
-  #backend = "cmdstanr",
-  #threads = threading(2),
+  backend = "cmdstanr",
+  threads = threading(2),
   iter = 2000,
   chains = 2,
   cores = 2,
@@ -301,8 +301,8 @@ m1 <- brm(
   family = bernoulli,
   prior = p1,
   sample_prior = T,
-  #backend = "cmdstanr",
-  #threads = threading(2),
+  backend = "cmdstanr",
+  threads = threading(2),
   iter = 2000,
   chains = 2,
   cores = 2,
@@ -402,7 +402,7 @@ grid.arrange(plot7, plot8, plot9, plot10)
 ```{r}
 m1_prior_only_noise <- update(m1, newdata = train_noise)
 
-m1_noise <- update(m1_u, newdata = train_noise)
+m1_noise <- update(m1, newdata = train_noise)
 ```
 
 
@@ -411,7 +411,11 @@ m1_noise <- update(m1_u, newdata = train_noise)
 #Assessing performance on the training data
 ```{r}
 train_inf$av_pred_perc <- predict(m1)[,1] #new colum with average predictions
-train_inf <- train_inf %>% mutate(av_pred =as.factor(ifelse(av_pred_perc > 0.5, "SZ", "HC")))
+train_inf <- train_inf %>% mutate(av_pred =as.factor(ifelse(av_pred_perc < 0.5, "HC", "SZ")))
+
+train_inf$av_pred <- factor(train_inf$av_pred, levels=c('SZ', 'HC'))
+
+levels(train_inf$av_pred)
 ```
 
 ```{r}
