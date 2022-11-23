@@ -316,6 +316,7 @@ m1
 #plot(m1)
 ```
 
+
 ```{r}
 #Prior predictive update checks for the informed data
 m1_posterior <- as_draws_df(m1) 
@@ -397,6 +398,8 @@ theme_classic()
 ```{r}
 grid.arrange(plot1, plot2, plot3, plot4, plot5, plot6)
 grid.arrange(plot7, plot8, plot9, plot10)
+
+#look at v_8 (noise variable) - do we revisit the priors when it's noise??
 ```
 
 
@@ -409,6 +412,7 @@ pp_check(m1_noise_train, ndraws=1000)
 print(m1_noise_train)
 
 ```
+
 ```{r}
 m1_posterior_noise <- as_draws_df(m1_noise_train) 
 
@@ -492,26 +496,26 @@ grid.arrange(plot7_noise, plot8_noise, plot9_noise, plot10_noise)
 ```
 
 
-
+*NB:*Do we redo our formula and/or our priors before checking the performance of it ????
 
 
 # Assessing performance on the informed data
 ```{r}
-#train
+
+#train_inf
 train_inf$av_pred_perc <- predict(m1)[,1] #new column with average predictions
-train_inf <- train_inf %>% mutate(av_pred =as.factor(ifelse(av_pred_perc < 0.5, "HC", "SZ")))
+train_inf <- train_inf %>% mutate(av_pred =as.factor(ifelse(av_pred_perc > 0.5, "HC", "SZ")))
 
 train_inf$av_pred <- factor(train_inf$av_pred, levels=c('SZ', 'HC'))
+
+
+#train_noise
+train_noise$av_pred_perc <- predict(m1_noise_train)[,1] #new column with average predictions
+train_noise <- train_noise %>% mutate(av_pred =as.factor(ifelse(av_pred_perc > 0.5, "HC", "SZ")))
+
+train_noise$av_pred <- factor(train_noise$av_pred, levels=c('SZ', 'HC'))
+
 ```
-
-```{r}
-#test
-test_inf$av_pred_perc <- predict(m1)[,1] 
-test_inf <- test_inf %>% mutate(av_pred =as.factor(ifelse(av_pred_perc < 0.5, "HC", "SZ")))
-
-test_inf$av_pred <- factor(test_inf$av_pred, levels=c('SZ', 'HC'))
-```
-
 
 ```{r}
 #Train_inf performance
@@ -520,36 +524,86 @@ yardstick::conf_mat(train_inf,
          estimate = av_pred,
          dnn = c("Prediction", "Truth"))
 
+metrics(train_inf, 
+        truth = group, 
+        estimate = av_pred)
+
+
+#Train_noise performance
+yardstick::conf_mat(train_noise, 
+         truth = group,
+         estimate = av_pred,
+         dnn = c("Prediction", "Truth"))
+
+metrics(train_noise, 
+         truth = group, 
+        estimate = av_pred)
+
+
+
+```
+
+```{r}
+
+# Plotting uncertainty?
+u_train <- tibble(train_inf = predict(m1)[,2], train_noise = predict(m1_noise_train)[,2]  )  
+
+u_test <- tibble(test_inf = predict(m1, newdata = test_inf, allow_new_levels=T)[,2], test_noise = predict(m1_noise_train, newdata = test_noise, allow_new_levels=T)[,2])
+
+
+...tis
+
+```
+
+```{r}
+devtools::install_github("clauswilke/ungeviz")
+```
+
+
+
+
+# Now running the model on the test data - both informed and noise
+```{r}
+#m1_inf_test <- update(m1, newdata = test_inf)
+#m1_noise_test <- update(m1, newdata = test_inf )
+```
+
+
+```{r}
+#inf
+
+test_inf$av_pred_perc <- predict(m1, newdata = test_inf, allow_new_levels=T)[,1]
+test_inf <- test_inf %>% mutate(av_pred =as.factor(ifelse(av_pred_perc > 0.5, "HC", "SZ")))
+
+test_inf$av_pred <- factor(test_inf$av_pred, levels=c('SZ', 'HC'))
+
+
+
+#noise
+
+test_noise$av_pred_perc <- predict(m1, newdata = test_noise, allow_new_levels=T)[,1]
+test_noise <- test_noise %>% mutate(av_pred =as.factor(ifelse(av_pred_perc > 0.5, "HC", "SZ")))
+
+test_noise$av_pred <- factor(test_noise$av_pred, levels=c('SZ', 'HC'))
+```
+
+
+```{r}
 #Test_inf performance
 yardstick::conf_mat(test_inf, 
          truth = group,
          estimate = av_pred,
          dnn = c("Prediction", "Truth"))
 
-```
 
-
-#Running the model on the test set and assessing performance 
-```{r}
-#m1_u <- update(m1, newdata = test_inf)
-
-
-#print(m1_u)
-#pp_check(m1_u, ndraws = 1000)
-```
-
-
-```{r}
-test_noise$av_pred_perc <- predict(m1)[,1] #new colum with average predictions
-test_noise <- test_noise %>% mutate(av_pred =as.factor(ifelse(av_pred_perc > 0.5, "SZ", "HC")))
-```
-
-```{r}
-yardstick::conf_mat(test_inf, 
+#Test_noise performance
+yardstick::conf_mat(test_noise, 
          truth = group,
          estimate = av_pred,
          dnn = c("Prediction", "Truth"))
 ```
+
+
 
 
 
