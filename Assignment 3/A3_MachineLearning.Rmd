@@ -22,7 +22,7 @@ The report for the exam, thus, consists of the answer to all the following promp
 Remember: plots are very very important to communicate your process and results.
 
 ```{r}
-pacman::p_load(tidyverse,purrr, brms, cmdstanr, bayesplot, rstanarm, viridis, gridExtra, RColorBrewer, reshape2, tidymodels, yardstick)
+pacman::p_load(tidyverse,purrr, brms, cmdstanr, bayesplot, rstanarm, viridis, gridExtra, RColorBrewer, reshape2, tidymodels, yardstick, corrplot, DALEX, DALEXtra)
 
 set.seed(3)
 ```
@@ -218,7 +218,8 @@ rec_informed <- train_inf %>% recipe(group ~.) %>%
   
 
 #Using the recipe on the test data
-bake(rec_informed, new_data = test_inf)
+train_inf <- juice(rec_informed)
+test_inf <- bake(rec_informed, new_data = test_inf)
 ```
 
 
@@ -226,8 +227,8 @@ bake(rec_informed, new_data = test_inf)
 ## Data budgetting and preprocessing on the *noise* data set
 ```{r}
 #Splitting data 80/20
-train_noise <- matched_data %>% subset(!(ID %in% spl))
-test_noise <- matched_data %>% subset(ID %in% spl)
+train_noise <- matched_noise %>% subset(!(ID %in% spl))
+test_noise <- matched_noise %>% subset(ID %in% spl)
 
 ```
 
@@ -242,7 +243,8 @@ rec_noise <- train_noise %>% recipe(group ~.) %>%
   
 
 #Using the recipe on the test data
-bake(rec_noise, new_data = test_noise)
+train_noise <- juice(rec_noise)
+test_noise <- bake(rec_noise, new_data = test_noise)
 
 ```
 
@@ -551,8 +553,6 @@ u_train <- tibble(train_inf = predict(m1)[,2], train_noise = predict(m1_noise_tr
 u_test <- tibble(test_inf = predict(m1, newdata = test_inf, allow_new_levels=T)[,2], test_noise = predict(m1_noise_train, newdata = test_noise, allow_new_levels=T)[,2])
 
 
-...tis
-
 ```
 
 ```{r}
@@ -603,7 +603,44 @@ yardstick::conf_mat(test_noise,
          dnn = c("Prediction", "Truth"))
 ```
 
+#Check correlation between predictors - the frequentest way - w
+```{r}
+cor_dat <- matched_data %>%  select(starts_with("v"))
 
+corrrr <- correlations(cor_dat, use ="everything" , method = "pearson")
+
+
+corrplot(corrrr, method = "number")
+```
+
+
+
+
+
+# Feature importance
+```{r}
+#Creating the engine
+pacman::p_load(randomForest, xgboost, kernlab)
+
+
+train_trees <- train_inf %>% mutate(ID = NULL, trial = NULL, av_pred = NULL, av_pred_perc = NULL, v3_obs_matched = NULL)
+
+
+informed_SVM <- svm_rbf()%>% 
+  set_mode("classification") %>% 
+  set_engine("kernlab") %>% 
+  fit(group ~., data = train_trees)
+
+
+am_i_important <- explain_tidymodels(informed_SVM, 
+                                     data = train_inf, 
+                                     y= as.numeric(train_inf$group)-1,
+                                     label= "SVM", 
+                                     verbose = FALSE)
+
+
+am_i_important %>% model_parts() %>% plot(show_box_plots = F)
+```
 
 
 
