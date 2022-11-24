@@ -202,16 +202,23 @@ Bonus question: replace the bayesian multilevel regression with a different algo
 #Splitting data 80/20
 spl <- sample(seq(people/2), 20)
 
-train_inf <- matched_data %>% subset(!(ID %in% spl))
-test_inf <- matched_data %>% subset(ID %in% spl)
+train_inf <- matched_data %>% 
+  subset(!(ID %in% spl))%>% 
+  mutate(ID = as.factor(ID), trial = as.factor(trial)) 
+
+test_inf <- matched_data %>% 
+  subset(ID %in% spl)%>%
+  mutate(ID = as.factor(ID), trial = as.factor(trial)) 
 
 ```
 
 
 ```{r}
 #Centering the training data
-rec_informed <- train_inf %>% recipe(group ~.) %>% 
-  update_role(ID, trials, new_role = "Second level") %>%
+rec_informed <- train_inf %>% 
+  recipe(group ~.) %>% 
+  update_role(ID, trials, new_role = "Second Level") %>%
+  update_role_requirements("Second Level", bake = F) %>% 
   step_scale(all_numeric()) %>%
   step_center(all_numeric()) %>%
   prep(train=train_inf, retain = T)
@@ -220,6 +227,7 @@ rec_informed <- train_inf %>% recipe(group ~.) %>%
 #Using the recipe on the test data
 train_inf <- juice(rec_informed)
 test_inf <- bake(rec_informed, new_data = test_inf)
+
 ```
 
 
@@ -227,8 +235,13 @@ test_inf <- bake(rec_informed, new_data = test_inf)
 ## Data budgetting and preprocessing on the *noise* data set
 ```{r}
 #Splitting data 80/20
-train_noise <- matched_noise %>% subset(!(ID %in% spl))
-test_noise <- matched_noise %>% subset(ID %in% spl)
+train_noise <- matched_noise %>% 
+  subset(!(ID %in% spl)) %>%
+  mutate(ID = as.factor(ID), trial = as.factor(trial)) 
+
+test_noise <- matched_noise %>% 
+  subset(ID %in% spl) %>%
+  mutate(ID = as.factor(ID), trial = as.factor(trial)) 
 
 ```
 
@@ -237,6 +250,7 @@ test_noise <- matched_noise %>% subset(ID %in% spl)
 #Centering the training data
 rec_noise <- train_noise %>% recipe(group ~.) %>% 
   update_role(ID, trials, new_role = "Second level") %>%
+  update_role_requirements("Second level", bake = F) %>% 
   step_scale(all_numeric()) %>%
   step_center(all_numeric()) %>%
   prep(train=train_noise, retain = T)
@@ -401,7 +415,6 @@ theme_classic()
 grid.arrange(plot1, plot2, plot3, plot4, plot5, plot6)
 grid.arrange(plot7, plot8, plot9, plot10)
 
-#look at v_8 (noise variable) - do we revisit the priors when it's noise??
 ```
 
 
@@ -501,21 +514,21 @@ grid.arrange(plot7_noise, plot8_noise, plot9_noise, plot10_noise)
 *NB:*Do we redo our formula and/or our priors before checking the performance of it ????
 
 
-# Assessing performance on the informed data
+# Assessing performance on the  data
 ```{r}
 
 #train_inf
 train_inf$av_pred_perc <- predict(m1)[,1] #new column with average predictions
-train_inf <- train_inf %>% mutate(av_pred =as.factor(ifelse(av_pred_perc > 0.5, "HC", "SZ")))
+train_inf <- train_inf %>% mutate(pred =as.factor(ifelse(av_pred_perc > 0.5, "HC", "SZ")))
 
-train_inf$av_pred <- factor(train_inf$av_pred, levels=c('SZ', 'HC'))
+train_inf$pred <- factor(train_inf$pred, levels=c('SZ', 'HC'))
 
 
 #train_noise
 train_noise$av_pred_perc <- predict(m1_noise_train)[,1] #new column with average predictions
-train_noise <- train_noise %>% mutate(av_pred =as.factor(ifelse(av_pred_perc > 0.5, "HC", "SZ")))
+train_noise <- train_noise %>% mutate(pred =as.factor(ifelse(av_pred_perc > 0.5, "HC", "SZ")))
 
-train_noise$av_pred <- factor(train_noise$av_pred, levels=c('SZ', 'HC'))
+train_noise$pred <- factor(train_noise$pred, levels=c('SZ', 'HC'))
 
 ```
 
@@ -523,68 +536,58 @@ train_noise$av_pred <- factor(train_noise$av_pred, levels=c('SZ', 'HC'))
 #Train_inf performance
 yardstick::conf_mat(train_inf, 
          truth = group,
-         estimate = av_pred,
+         estimate = pred,
          dnn = c("Prediction", "Truth"))
 
 metrics(train_inf, 
         truth = group, 
-        estimate = av_pred)
-
+        estimate = pred)
 
 #Train_noise performance
 yardstick::conf_mat(train_noise, 
          truth = group,
-         estimate = av_pred,
+         estimate = pred,
          dnn = c("Prediction", "Truth"))
 
 metrics(train_noise, 
          truth = group, 
-        estimate = av_pred)
+        estimate = pred)
 
 
 
 ```
 
+
+# plot the  story
 ```{r}
 
-# Plotting uncertainty?
-u_train <- tibble(train_inf = predict(m1)[,2], train_noise = predict(m1_noise_train)[,2]  )  
-
-u_test <- tibble(test_inf = predict(m1, newdata = test_inf, allow_new_levels=T)[,2], test_noise = predict(m1_noise_train, newdata = test_noise, allow_new_levels=T)[,2])
-
-
 ```
-
-```{r}
-devtools::install_github("clauswilke/ungeviz")
-```
-
 
 
 
 # Now running the model on the test data - both informed and noise
 ```{r}
-#m1_inf_test <- update(m1, newdata = test_inf)
-#m1_noise_test <- update(m1, newdata = test_inf )
+m1_inf_test <- update(m1, newdata = test_inf)
+
+m1_noise_test <- update(m1, newdata = test_noise )
+
 ```
 
 
 ```{r}
 #inf
+test_inf$av_pred_perc <- predict(m1_inf_test, allow_new_levels=T)[,1]
+test_inf <- test_inf %>% mutate(pred =as.factor(ifelse(av_pred_perc > 0.5, "HC", "SZ")))
 
-test_inf$av_pred_perc <- predict(m1, newdata = test_inf, allow_new_levels=T)[,1]
-test_inf <- test_inf %>% mutate(av_pred =as.factor(ifelse(av_pred_perc > 0.5, "HC", "SZ")))
-
-test_inf$av_pred <- factor(test_inf$av_pred, levels=c('SZ', 'HC'))
+test_inf$pred <- factor(test_inf$pred, levels=c('SZ', 'HC'))
 
 
 
 #noise
+test_noise$av_pred_perc <- predict(m1_noise_test, allow_new_levels=T)[,1]
+test_noise <- test_noise %>% mutate(pred =as.factor(ifelse(av_pred_perc > 0.5, "HC", "SZ")))
 
-test_noise$av_pred_perc <- predict(m1, newdata = test_noise, allow_new_levels=T)[,1]
-test_noise <- test_noise %>% mutate(av_pred =as.factor(ifelse(av_pred_perc > 0.5, "HC", "SZ")))
-
-test_noise$av_pred <- factor(test_noise$av_pred, levels=c('SZ', 'HC'))
+test_noise$pred <- factor(test_noise$pred, levels=c('SZ', 'HC'))
 ```
 
 
@@ -592,26 +595,52 @@ test_noise$av_pred <- factor(test_noise$av_pred, levels=c('SZ', 'HC'))
 #Test_inf performance
 yardstick::conf_mat(test_inf, 
          truth = group,
-         estimate = av_pred,
+         estimate = pred,
          dnn = c("Prediction", "Truth"))
 
 
 #Test_noise performance
 yardstick::conf_mat(test_noise, 
          truth = group,
-         estimate = av_pred,
+         estimate = pred,
          dnn = c("Prediction", "Truth"))
+
+
+metrics(test_inf, 
+         truth = group, 
+        estimate = pred)
+
+
+
+metrics(test_noise, 
+         truth = group, 
+        estimate = pred)
+
 ```
 
-#Check correlation between predictors - the frequentest way - w
+
 ```{r}
-cor_dat <- matched_data %>%  select(starts_with("v"))
-
-corrrr <- correlations(cor_dat, use ="everything" , method = "pearson")
-
-
-corrplot(corrrr, method = "number")
+devtools::install_github("clauswilke/ungeviz")
 ```
+
+
+
+# Plotting uncertainty?
+u_train <- tibble(train_inf = predict(m1)[,2], train_noise = predict(m1_noise_train)[,2]  )  
+
+u_test <- tibble(test_inf = predict(m1, newdata = test_inf, allow_new_levels=T)[,2], test_noise = predict(m1_noise_train, newdata = test_noise, allow_new_levels=T)[,2])
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -620,22 +649,22 @@ corrplot(corrrr, method = "number")
 # Feature importance
 ```{r}
 #Creating the engine
-pacman::p_load(randomForest, xgboost, kernlab)
+pacman::p_load(randomForest, kernlab)
 
 
-train_trees <- train_inf %>% mutate(ID = NULL, trial = NULL, av_pred = NULL, av_pred_perc = NULL, v3_obs_matched = NULL)
+train_trees <- train_inf %>% mutate(ID = NULL, trial = NULL, av_pred = NULL, v3_obs_matched = NULL)
 
 
-informed_SVM <- svm_rbf()%>% 
+informed_trees <- log() %>% 
   set_mode("classification") %>% 
-  set_engine("kernlab") %>% 
+  set_engine("randomForest") %>% 
   fit(group ~., data = train_trees)
 
 
-am_i_important <- explain_tidymodels(informed_SVM, 
+am_i_important <- explain_tidymodels(informed_trees, 
                                      data = train_inf, 
                                      y= as.numeric(train_inf$group)-1,
-                                     label= "SVM", 
+                                     label= "random forest", 
                                      verbose = FALSE)
 
 
