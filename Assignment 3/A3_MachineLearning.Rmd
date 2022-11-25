@@ -22,7 +22,7 @@ The report for the exam, thus, consists of the answer to all the following promp
 Remember: plots are very very important to communicate your process and results.
 
 ```{r}
-pacman::p_load(tidyverse,purrr, brms, cmdstanr, bayesplot, rstanarm, viridis, gridExtra, RColorBrewer, reshape2, tidymodels, yardstick, corrplot, DALEX, DALEXtra, randomForest, xgboost, kernlab)
+pacman::p_load(tidyverse,purrr, brms, cmdstanr, bayesplot, rstanarm, viridis, gridExtra, RColorBrewer, reshape2, tidymodels, yardstick, corrplot, DALEX, DALEXtra, randomForest, xgboost, kernlab, caret)
 
 set.seed(3)
 ```
@@ -667,21 +667,52 @@ perf_prob <-  tibble(expand.grid(
 )
 
 train <- inv_logit_scaled(posterior_linpred(m1, summary = F))
-
 test <- inv_logit_scaled(posterior_linpred(m1, newdata = test_inf_s, summary = F, allow_new_levels = T))
 
+train_n <- inv_logit_scaled(posterior_linpred(m1, newdata = train_noise, summary = F, allow_new_levels = T))
+test_n <- inv_logit_scaled(posterior_linpred(m1, newdata = test_noise_s, summary = F, allow_new_levels = T))
+```
 
-f <- function(x){
-  train_inf$av_pred <- as.factor(ifelse(train >0.5, "HC", "SZ"))
-  test_inf_s$av_pred <- as.factor(ifelse(train >0.5, "HC", "SZ"))
+
+```{r}
+fun_df <- function(x){
+  if(x[,"data"] == "informed" & x[,"type"] == "training"){var <- accuracy(train_inf, truth = group, estimate = av_pred)[,"estimate"]}
+    
+  if(x[,"data"] == "informed" & x[,"type"] == "test"){ var <- accuracy(test_inf_s, truth = group, estimate = av_pred)[,"estimate"]}
+
+  if(x[,"data"] == "noise" & x[,"type"] == "training"){ var <- accuracy(train_noise, truth = group, estimate = av_pred)[,"estimate"]}
   
-  perf_prob$accuracy <- if(perf_prob$sample==x & perf_prob$data == "informed" & perf_prob$type == "training", accuracy(train_inf, truth = group, estimate = av_pred))
+  if(x[,"data"] == "noise" & x[,"type"] == "test"){ var <-  accuracy(test_noise_s, truth = group, estimate = av_pred)[,"estimate"]}
+  
+  return(var)
 }
 
 
+#map(perf_prob, fun_df)
+
+train_inf$predictions
 
 ```
 
+```{r}
+for (i in seq(4000)){
+  train_inf$predictions <- as.factor(ifelse(train[i,] > 0.5, "HC", "SZ")) %>%  factor(levels=c('SZ', 'HC'))
+  test_inf_s$predictions <- as.factor(ifelse(test[i,] > 0.5, "HC", "SZ")) %>% factor(levels=c('SZ', 'HC'))
+  
+    train_noise$predictions <- as.factor(ifelse(train_n[i,] > 0.5, "HC", "SZ")) %>%  factor(levels=c('SZ', 'HC'))
+  test_noise_s$predictions <- as.factor(ifelse(test_n[i,] > 0.5, "HC", "SZ")) %>% factor(levels=c('SZ', 'HC'))
+  
+  
+  
+  perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "informed" & perf_prob$type=="training"] <- accuracy(train_inf, truth = group, estimate = predictions)[, ".estimate"]
+  
+   perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "informed" & perf_prob$type=="test"] <- accuracy(test_inf_s, truth = group, estimate = predictions)[, ".estimate"]
+   
+    perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "noise" & perf_prob$type=="training"] <- accuracy(train_noise, truth = group, estimate = predictions)[, ".estimate"]
+    
+     perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "noise" & perf_prob$type=="test"] <- accuracy(test_noise_s, truth = group, estimate = predictions)[, ".estimate"]
+}
+```
 
 ```{r}
 brms::conditional_effects(m1)
