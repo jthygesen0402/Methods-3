@@ -514,21 +514,20 @@ grid.arrange(plot7_noise, plot8_noise, plot9_noise, plot10_noise)
 *NB:*Do we redo our formula and/or our priors before checking the performance of it ????
 
 
-# Assessing performance on the  data
+# Assessing performance on the informed data
 ```{r}
-
 #train_inf
 train_inf$av_pred_perc <- predict(m1)[,1] #new column with average predictions
-train_inf <- train_inf %>% mutate(pred =as.factor(ifelse(av_pred_perc > 0.5, "HC", "SZ")))
+train_inf <- train_inf %>% mutate(av_pred =as.factor(ifelse(av_pred_perc > 0.5, "HC", "SZ")))
 
-train_inf$pred <- factor(train_inf$pred, levels=c('SZ', 'HC'))
+train_inf$av_pred <- factor(train_inf$av_pred, levels=c('SZ', 'HC'))
 
 
 #train_noise
-train_noise$av_pred_perc <- predict(m1_noise_train)[,1] #new column with average predictions
-train_noise <- train_noise %>% mutate(pred =as.factor(ifelse(av_pred_perc > 0.5, "HC", "SZ")))
+train_noise$av_pred_perc <- predict(m1_noise)[,1] #new column with average predictions
+train_noise <- train_noise %>% mutate(av_pred =as.factor(ifelse(av_pred_perc > 0.5, "HC", "SZ")))
 
-train_noise$pred <- factor(train_noise$pred, levels=c('SZ', 'HC'))
+train_noise$av_pred <- factor(train_noise$av_pred, levels=c('SZ', 'HC'))
 
 ```
 
@@ -536,110 +535,135 @@ train_noise$pred <- factor(train_noise$pred, levels=c('SZ', 'HC'))
 #Train_inf performance
 yardstick::conf_mat(train_inf, 
          truth = group,
-         estimate = pred,
+         estimate = av_pred,
          dnn = c("Prediction", "Truth"))
 
 metrics(train_inf, 
         truth = group, 
-        estimate = pred)
+        estimate = av_pred)
+
 
 #Train_noise performance
 yardstick::conf_mat(train_noise, 
          truth = group,
-         estimate = pred,
+         estimate = av_pred,
          dnn = c("Prediction", "Truth"))
 
 metrics(train_noise, 
          truth = group, 
-        estimate = pred)
+        estimate = av_pred)
 
 
 
 ```
 
 
-# plot the  story
-```{r}
-
-```
 
 
 
-# Now running the model on the test data - both informed and noise
-```{r}
-m1_inf_test <- update(m1, newdata = test_inf)
-
-m1_noise_test <- update(m1, newdata = test_noise )
-
-```
+# Predictions on the test data - both informed and noise
 
 
 ```{r}
 #inf
-test_inf$av_pred_perc <- predict(m1_inf_test, allow_new_levels=T)[,1]
-test_inf <- test_inf %>% mutate(pred =as.factor(ifelse(av_pred_perc > 0.5, "HC", "SZ")))
 
-test_inf$pred <- factor(test_inf$pred, levels=c('SZ', 'HC'))
+test_inf_s$av_pred_perc <- predict(m1,newdata = test_inf_s, allow_new_levels=T)[,1]
+test_inf_s <- test_inf_s %>% mutate(av_pred =as.factor(ifelse(av_pred_perc > 0.5, "HC", "SZ")))
+
+test_inf_s$av_pred <- factor(test_inf_s$av_pred, levels=c('SZ', 'HC'))
 
 
 
 #noise
-test_noise$av_pred_perc <- predict(m1_noise_test, allow_new_levels=T)[,1]
-test_noise <- test_noise %>% mutate(pred =as.factor(ifelse(av_pred_perc > 0.5, "HC", "SZ")))
 
-test_noise$pred <- factor(test_noise$pred, levels=c('SZ', 'HC'))
+test_noise_s$av_pred_perc <- predict(m1, newdata = test_noise_s, allow_new_levels=T)[,1]
+test_noise_s <- test_noise_s %>% mutate(av_pred =as.factor(ifelse(av_pred_perc > 0.5, "HC", "SZ")))
+
+test_noise_s$av_pred <- factor(test_noise_s$av_pred, levels=c('SZ', 'HC'))
 ```
 
 
 ```{r}
 #Test_inf performance
-yardstick::conf_mat(test_inf, 
+yardstick::conf_mat(test_inf_s, 
          truth = group,
-         estimate = pred,
+         estimate = av_pred,
          dnn = c("Prediction", "Truth"))
 
 
 #Test_noise performance
-yardstick::conf_mat(test_noise, 
+yardstick::conf_mat(test_noise_s, 
          truth = group,
-         estimate = pred,
+         estimate = av_pred,
          dnn = c("Prediction", "Truth"))
+```
 
+```{r}
+perf_prob <-  tibble(expand.grid(
+  sample = seq(4000), 
+  data = c("informed", "noise"), 
+  type = c("training", "test"))
+)
 
-metrics(test_inf, 
-         truth = group, 
-        estimate = pred)
+train <- inv_logit_scaled(posterior_linpred(m1, summary = F))
+test <- inv_logit_scaled(posterior_linpred(m1, newdata = test_inf_s, summary = F, allow_new_levels = T))
 
-
-
-metrics(test_noise, 
-         truth = group, 
-        estimate = pred)
-
+train_n <- inv_logit_scaled(posterior_linpred(m1, newdata = train_noise, summary = F, allow_new_levels = T))
+test_n <- inv_logit_scaled(posterior_linpred(m1, newdata = test_noise_s, summary = F, allow_new_levels = T))
 ```
 
 
 ```{r}
-devtools::install_github("clauswilke/ungeviz")
+fun_df <- function(x){
+  if(x[,"data"] == "informed" & x[,"type"] == "training"){var <- accuracy(train_inf, truth = group, estimate = av_pred)[,"estimate"]}
+    
+  if(x[,"data"] == "informed" & x[,"type"] == "test"){ var <- accuracy(test_inf_s, truth = group, estimate = av_pred)[,"estimate"]}
+
+  if(x[,"data"] == "noise" & x[,"type"] == "training"){ var <- accuracy(train_noise, truth = group, estimate = av_pred)[,"estimate"]}
+  
+  if(x[,"data"] == "noise" & x[,"type"] == "test"){ var <-  accuracy(test_noise_s, truth = group, estimate = av_pred)[,"estimate"]}
+  
+  return(var)
+}
+
+
+#map(perf_prob, fun_df)
+
+train_inf$predictions
+
+```
+
+```{r}
+for (i in seq(4000)){
+  train_inf$predictions <- as.factor(ifelse(train[i,] > 0.5, "HC", "SZ")) %>%  factor(levels=c('SZ', 'HC'))
+  test_inf_s$predictions <- as.factor(ifelse(test[i,] > 0.5, "HC", "SZ")) %>% factor(levels=c('SZ', 'HC'))
+  
+    train_noise$predictions <- as.factor(ifelse(train_n[i,] > 0.5, "HC", "SZ")) %>%  factor(levels=c('SZ', 'HC'))
+  test_noise_s$predictions <- as.factor(ifelse(test_n[i,] > 0.5, "HC", "SZ")) %>% factor(levels=c('SZ', 'HC'))
+  
+  
+  
+  perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "informed" & perf_prob$type=="training"] <- accuracy(train_inf, truth = group, estimate = predictions)[, ".estimate"]
+  
+   perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "informed" & perf_prob$type=="test"] <- accuracy(test_inf_s, truth = group, estimate = predictions)[, ".estimate"]
+   
+    perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "noise" & perf_prob$type=="training"] <- accuracy(train_noise, truth = group, estimate = predictions)[, ".estimate"]
+    
+     perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "noise" & perf_prob$type=="test"] <- accuracy(test_noise_s, truth = group, estimate = predictions)[, ".estimate"]
+}
+```
+
+```{r}
+brms::conditional_effects(m1)
 ```
 
 
+These are just the average predictions. And our model shows us that it can find predictions on noise, which is problematic. . But this is without including uncertainty. 
 
-# Plotting uncertainty?
-u_train <- tibble(train_inf = predict(m1)[,2], train_noise = predict(m1_noise_train)[,2]  )  
-
-u_test <- tibble(test_inf = predict(m1, newdata = test_inf, allow_new_levels=T)[,2], test_noise = predict(m1_noise_train, newdata = test_noise, allow_new_levels=T)[,2])
+We need to generate predictions of every posterior samples of our model and plot the full distribution of the performance/accuracy. 
 
 
-
-
-
-
-
-
-
-
-
+#
 
 
 
@@ -648,33 +672,80 @@ u_test <- tibble(test_inf = predict(m1, newdata = test_inf, allow_new_levels=T)[
 
 # Feature importance
 ```{r}
-#Creating the engine
-pacman::p_load(randomForest, kernlab)
+train_trees <- train_inf %>% mutate(ID = NULL, trial = NULL, av_pred = NULL, av_pred_perc = NULL, v3_obs_matched = NULL)
+
+#SVM-engine
+informed_SVM <- svm_rbf()%>% 
+  set_mode("classification") %>% 
+  set_engine("kernlab") %>% 
+  fit(group ~., data = train_trees)
 
 
-train_trees <- train_inf %>% mutate(ID = NULL, trial = NULL, av_pred = NULL, v3_obs_matched = NULL)
+am_i_important <- explain_tidymodels(informed_SVM, 
+                                     data = train_inf, 
+                                     y= as.numeric(train_inf$group)-1,
+                                     label= "SVM", 
+                                     verbose = FALSE)
 
 
-informed_trees <- log() %>% 
+#RandomForest-engine
+informed_trees <- rand_forest()%>% 
   set_mode("classification") %>% 
   set_engine("randomForest") %>% 
   fit(group ~., data = train_trees)
 
 
-am_i_important <- explain_tidymodels(informed_trees, 
+am_i_important_2 <- explain_tidymodels(informed_trees, 
                                      data = train_inf, 
                                      y= as.numeric(train_inf$group)-1,
-                                     label= "random forest", 
+                                     label= "Random Forest", 
                                      verbose = FALSE)
 
 
-am_i_important %>% model_parts() %>% plot(show_box_plots = F)
+am_i_important %>% model_parts() %>% plot() #SVM
+am_i_important_2 %>% model_parts() %>% plot() #RandomForest
 ```
 
+## Noise data
 
 
-## Part III - Applying the ML pipeline to empirical data
 
 Download the empirical dataset from brightspace and apply your ML pipeline to the new data, adjusting where needed. *Warning*: in the simulated dataset we only had 10 features, now you have many more! Such is the life of the ML practitioner. Consider the impact a higher number of features will have on your ML inference, and decide whether you need to cut down the number of features before running the pipeline (or alternatively expand the pipeline to add feature selection).
 
 Data: https://www.dropbox.com/s/7ky1axvea33lgye/Ass3_empiricalData1.csv?dl=0
+
+```{r}
+real_data <- read_csv("Ass3_empiricalData1.csv")
+```
+
+```{r}
+#removing non-acoustic features
+real_data <- real_data %>%
+  mutate(
+    PatID = NULL,
+    NewID = NULL,
+    Language = NULL,
+    Trial = NULL,
+    Corpus = NULL,
+    Gender = NULL,
+    Diagnosis = as.factor(Diagnosis)
+  )
+```
+
+
+```{r}
+LogisticRegression <- logistic_reg() %>%
+  set_mode("classification") %>% 
+  set_engine("glm") %>%
+  fit(Diagnosis ~ . , data = real_sub_data)
+dd <- explain_tidymodels(LogisticRegression, 
+                                     data = real_sub_data, 
+                                     y= as.numeric(real_sub_data$group)-1,
+                                     label= "GLM", 
+                                     verbose = FALSE)
+dd <- model_parts(dd) 
+plot(dd)
+caret::findLinearCombos(real_sub_data)
+```
+
+
