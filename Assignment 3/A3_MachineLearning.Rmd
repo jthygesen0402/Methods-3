@@ -343,8 +343,8 @@ m1_prior <-brm(
   family = bernoulli(link = "logit"),
   prior = p1,
   sample_prior = "only",
-  #backend = "cmdstanr",
-  #threads = threading(2),
+  backend = "cmdstanr",
+  threads = threading(2),
   iter = 1000,
   chains = 2,
   cores = 2,
@@ -369,8 +369,8 @@ m1 <- brm(
   family = bernoulli,
   prior = p1,
   sample_prior = T,
-  #backend = "cmdstanr",
-  #threads = threading(2),
+  backend = "cmdstanr",
+  threads = threading(2),
   iter = 1000,
   chains = 2,
   cores = 2,
@@ -581,17 +581,17 @@ grid.arrange(plot7_noise, plot8_noise, plot9_noise, plot10_noise, plot1_noise_I)
 # Assessing performance on the informed data
 ```{r}
 #train_inf
-train_inf$av_pred_perc <- predict(m1)[,1] #new column with average predictions
-train_inf <- train_inf %>% mutate(av_pred =as.factor(ifelse(av_pred_perc > 0.5, "HC", "SZ")))
+train_inf$pred_perc <- predict(m1)[,1] #one prediction per participant
+train_inf <- train_inf %>% mutate(pred =as.factor(ifelse(pred_perc > 0.5, "HC", "SZ"))) #deciding if the prediction is HC/SZ
 
-train_inf$av_pred <- factor(train_inf$av_pred, levels=c('SZ', 'HC'))
+train_inf$pred <- factor(train_inf$pred, levels=c('SZ', 'HC'))
 
 
 #train_noise
-train_noise$av_pred_perc <- predict(m1_noise)[,1] #new column with average predictions
-train_noise <- train_noise %>% mutate(av_pred =as.factor(ifelse(av_pred_perc > 0.5, "HC", "SZ")))
+train_noise$pred_perc <- predict(m1_noise)[,1] #one prediction per participant
+train_noise <- train_noise %>% mutate(pred =as.factor(ifelse(pred_perc > 0.5, "HC", "SZ")))#deciding if the prediction is HC/SZ
 
-train_noise$av_pred <- factor(train_noise$av_pred, levels=c('SZ', 'HC'))
+train_noise$pred <- factor(train_noise$pred, levels=c('SZ', 'HC'))
 
 ```
 
@@ -599,23 +599,23 @@ train_noise$av_pred <- factor(train_noise$av_pred, levels=c('SZ', 'HC'))
 #Train_inf performance
 yardstick::conf_mat(train_inf, 
          truth = group,
-         estimate = av_pred,
-         dnn = c("Prediction", "Truth"))
+         estimate = pred,
+         dnn = c("Prediction", "Truth")) #Confusion matrix of how many participants were correctly guessed
 
 metrics(train_inf, 
         truth = group, 
-        estimate = av_pred)
+        estimate = pred) #.estimate is an average estimate of how well the model predicts
 
 
 #Train_noise performance
 yardstick::conf_mat(train_noise, 
          truth = group,
          estimate = av_pred,
-         dnn = c("Prediction", "Truth"))
+         dnn = c("Prediction", "Truth")) #Confusion matrix of how many participants were correctly guessed
 
 metrics(train_noise, 
          truth = group, 
-        estimate = av_pred)
+        estimate = av_pred)#.estimate is an average estimate of how well the model predicts
 
 
 
@@ -643,6 +643,22 @@ test_noise_s$av_pred_perc <- predict(m1, newdata = test_noise_s, allow_new_level
 test_noise_s <- test_noise_s %>% mutate(av_pred =as.factor(ifelse(av_pred_perc > 0.5, "HC", "SZ")))
 
 test_noise_s$av_pred <- factor(test_noise_s$av_pred, levels=c('SZ', 'HC'))
+
+
+
+
+#test_inf
+test_inf_s$pred_perc <- predict(m1)[,1] #one prediction per participant
+train_inf <- train_inf %>% mutate(pred =as.factor(ifelse(pred_perc > 0.5, "HC", "SZ"))) #deciding if the prediction is HC/SZ
+
+train_inf$pred <- factor(train_inf$pred, levels=c('SZ', 'HC'))
+
+
+#test_noise
+train_noise$pred_perc <- predict(m1_noise)[,1] #one prediction per participant
+train_noise <- train_noise %>% mutate(pred =as.factor(ifelse(pred_perc > 0.5, "HC", "SZ")))#deciding if the prediction is HC/SZ
+
+train_noise$pred <- factor(train_noise$pred, levels=c('SZ', 'HC'))
 ```
 
 
@@ -659,6 +675,11 @@ yardstick::conf_mat(test_noise_s,
          truth = group,
          estimate = av_pred,
          dnn = c("Prediction", "Truth"))
+
+metrics(test_inf_s, 
+         truth = group, 
+        estimate = av_pred)
+
 ```
 
 
@@ -676,8 +697,8 @@ train <- inv_logit_scaled(posterior_linpred(m1, summary = F))
 test <- inv_logit_scaled(posterior_linpred(m1, newdata = test_inf_s, summary = F, allow_new_levels = T))
 
 #noise
-train_n <- inv_logit_scaled(posterior_linpred(m1, newdata = train_noise, summary = F, allow_new_levels = T))
-test_n <- inv_logit_scaled(posterior_linpred(m1, newdata = test_noise_s, summary = F, allow_new_levels = T))
+train_n <- inv_logit_scaled(posterior_linpred(m1_noise, summary = F))
+test_n <- inv_logit_scaled(posterior_linpred(m1_noise, newdata = test_noise_s, summary = F, allow_new_levels = T))
 ```
 
 
@@ -697,32 +718,49 @@ fun_df <- function(x){
 
 #map(perf_prob, fun_df)
 
-train_inf$predictions
-
 ```
 
 ```{r}
+train_inf_pred <- train
+test_inf_s_pred <- test
+train_noise_pred <- train_n
+test_noise_s_pred <- test_n
+
 for (i in seq(1000)){
-  train_inf$predictions <- as.factor(ifelse(train[i,] > 0.5, "HC", "SZ")) %>%  factor(levels=c('SZ', 'HC'))
-  test_inf_s$predictions <- as.factor(ifelse(test[i,] > 0.5, "HC", "SZ")) %>% factor(levels=c('SZ', 'HC'))
+  train_inf_pred[i,] <-  ifelse(train[i,] > 0.5, "HC", "SZ")
+  test_inf_s_pred[i,] <- as.factor(ifelse(test[i,] > 0.5, "HC", "SZ")) %>% factor(levels=c('SZ', 'HC'))
+  train_noise_pred[i,] <- as.factor(ifelse(train_n[i,] > 0.5, "HC", "SZ")) %>%  factor(levels=c('SZ', 'HC'))
+  test_noise_s_pred[i,] <- as.factor(ifelse(test_n[i,] > 0.5, "HC", "SZ")) %>% factor(levels=c('SZ', 'HC'))
+}  
+
+train_inf_pred[sapply(train_inf_pred, is.character)] <- lapply(train_inf_pred[sapply(train_inf_pred, is.character)], as.factor)
+
+  train_inf$accuracy <- train_inf %>% rowwise() %>% accuracy(truth=group,estimate=predictions)
+  test_inf_s$accuracy <- test_inf_s %>% rowwise()%>% accuracy(truth=group,estimate=predictions)
+  train_noise$accuracy <- train_noise%>% rowwise() %>% accuracy(truth=group,estimate=predictions)
+  test_noise_s$accuracy <- test_noise_s %>% rowwise()%>% accuracy(truth=group,estimate=predictions)
   
-    train_noise$predictions <- as.factor(ifelse(train_n[i,] > 0.5, "HC", "SZ")) %>%  factor(levels=c('SZ', 'HC'))
-  test_noise_s$predictions <- as.factor(ifelse(test_n[i,] > 0.5, "HC", "SZ")) %>% factor(levels=c('SZ', 'HC'))
   
+  #perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "informed" & perf_prob$type=="training"] <- accuracy(train_inf, truth = group, estimate = predictions)[, ".estimate"]
   
-  
-  perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "informed" & perf_prob$type=="training"] <- accuracy(train_inf, truth = group, estimate = predictions)[, ".estimate"]
-  
-   perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "informed" & perf_prob$type=="test"] <- accuracy(test_inf_s, truth = group, estimate = predictions)[, ".estimate"]
+   #perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "informed" & perf_prob$type=="test"] <- (accuracy(test_inf_s, truth = group, estimate = predictions)[, ".estimate"])
    
-    perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "noise" & perf_prob$type=="training"] <- accuracy(train_noise, truth = group, estimate = predictions)[, ".estimate"]
+    #perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "noise" & perf_prob$type=="training"] <- accuracy(train_noise, truth = group, estimate = predictions)[, ".estimate"]
     
-     perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "noise" & perf_prob$type=="test"] <- accuracy(test_noise_s, truth = group, estimate = predictions)[, ".estimate"]
+     #perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "noise" & perf_prob$type=="test"] <- (accuracy(test_noise_s, truth = group, estimate = predictions)[, ".estimate"])
 }
+
+accuracy(test_noise_s, truth = group, estimate = predictions)[, ".estimate"]
+
+
+t <- as.factor(ifelse(test_n[1,] > 0.5, "HC", "SZ")) %>% factor(levels=c('SZ', 'HC'))
+test_inf_s$predictions
 ```
 
 # Plotting the predictions w. uncertainty
 ```{r}
+perf_prob <- unnest(perf_prob, accuracy)
+
 ggplot(perf_prob, aes(y=as.numeric(accuracy) , x=type)) +
   geom_point(data = perf_prob)+
   scale_y_continuous() + 
