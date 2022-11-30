@@ -963,35 +963,13 @@ test_real <- bake(part_rec, new_data = test_part)
 train_num <- select_if(train_real, is.numeric)
 train_factor <- select_if(train_real, is.factor)
 
-#Finding the hifhly correlated variables. Setting the threshold to 0.65
+#Finding the highly correlated variables. Setting the threshold to 0.65
 cutoffs <- findCorrelation(cor(train_num), cutoff = 0.65)
 
 new_df <- train_num[,-cutoffs]
-
 t <- cbind(new_df, train_factor)
 
 plot_correlation(t)
-
-```
-
-
-
-#Trying to do feature selcetion.. it's not really working
-```{r}
-control <- rfeControl(functions = lrFuncs , 
-                      method = "cv"
-                     )
-
-y_train <- t$Diagnosis %>% as.data.frame()
-
-x_train <- t[,-c(95,96)]
-
-
-
-rfe_1 <- rfe(x = x_train,
-              y = y_train,
-             sizes = c(1:96),
-             rfeControl = control)
 
 ```
 
@@ -1020,18 +998,20 @@ pca_train_2 %>%
   labs(y = NULL)
 
 
-
 pca1 <- pca_train_2 %>% filter(component == "PC1") %>% filter(value < 0.05)
 
 terms <- pca1$terms
+t_new <- t[,!(names(t) %in% terms)] 
 
-t_new <- t[,!(names(t) %in% terms)]
+t_new$.partitions <- NULL
 
 ```
 
 
+```{r}
+n <- names(t_new)
+n <- n[-c(31,33)]
+n
+```
 
-
-
-
-
+```{r}
