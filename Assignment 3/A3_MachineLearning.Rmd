@@ -979,21 +979,19 @@ plot_correlation(t)
 #Trying to do feature selcetion.. it's not really working
 ```{r}
 control <- rfeControl(functions = lrFuncs , 
-                      method = "cv",
-                      verbose = F)
+                      method = "cv"
+                     )
 
-y_train <- t$Diagnosis
+y_train <- t$Diagnosis %>% as.data.frame()
 
-x_train <-t[,-c(95,96)] %>% as.data.frame()
+x_train <- t[,-c(95,96)]
 
 
 
 rfe_1 <- rfe(x = x_train,
-              y = (y_train),
+              y = y_train,
              sizes = c(1:96),
              rfeControl = control)
-
-
 
 ```
 
@@ -1001,7 +999,7 @@ rfe_1 <- rfe(x = x_train,
 #PCA
 ```{r}
 
-pca_train_ <-  recipe(Diagnosis ~., data = train_part) %>% 
+pca_train_ <-  recipe(Diagnosis ~., data = t) %>% 
   update_role(NewID, Trial, Gender,  new_role = "id") %>%
   step_scale(all_numeric()) %>%
   step_center(all_numeric()) %>%
@@ -1009,15 +1007,9 @@ pca_train_ <-  recipe(Diagnosis ~., data = train_part) %>%
 
 pca_train_2 <-recipes::prep(pca_train_, retain = T)
 
-
-
-
-
-
 pca_train_2 <- tidy(pca_train_2, 3)
 
-low <- pca_train_2 %>% filter(value < 0.01 | value > -0.01)
-high <- pca_train_2 %>% filter(value >0.01 | value < -0.01)
+
 
 pca_train_2 %>%
   filter(component %in% paste0("PC", 1:5)) %>%
@@ -1026,24 +1018,20 @@ pca_train_2 %>%
   geom_col(show.legend = FALSE) +
   facet_wrap(~component, nrow = 1) +
   labs(y = NULL)
+
+
+
+pca1 <- pca_train_2 %>% filter(component == "PC1") %>% filter(value < 0.05)
+
+terms <- pca1$terms
+
+t_new <- t[,!(names(t) %in% terms)]
+
 ```
 
 
 
-```{r}
-#LogisticRegression <- logistic_reg() %>%
-  #set_mode("classification") %>% 
-  #set_engine("glm") %>%
-  #fit(Diagnosis ~ . , data = real_sub_data)
-#dd <- explain_tidymodels(LogisticRegression, 
-                                     data = real_sub_data, 
-                                     y= as.numeric(real_sub_data$group)-1,
-                                     label= "GLM", 
-                                     verbose = FALSE)
-#dd <- model_parts(dd) 
-#plot(dd)
-#caret::findLinearCombos(real_sub_data)
-```
+
 
 
 
