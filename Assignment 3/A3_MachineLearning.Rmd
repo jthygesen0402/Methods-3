@@ -22,7 +22,7 @@ The report for the exam, thus, consists of the answer to all the following promp
 Remember: plots are very very important to communicate your process and results.
 
 ```{r}
-pacman::p_load(tidyverse,purrr, brms, cmdstanr, bayesplot, rstanarm, viridis, gridExtra, RColorBrewer, reshape2, tidymodels, yardstick, corrplot, DALEX, DALEXtra, randomForest, xgboost, kernlab, caret, cvms, groupdata2)
+pacman::p_load(tidyverse,purrr, brms, cmdstanr, bayesplot, rstanarm, viridis, gridExtra, RColorBrewer, reshape2, tidymodels, yardstick, corrplot, DALEX, DALEXtra, randomForest, xgboost, kernlab, caret, cvms, groupdata2, DataExplorer, klaR)
 
 
 set.seed(3)
@@ -300,7 +300,6 @@ p1 <- c(
 )
 
 
-
 ```
 
 ```{r}
@@ -446,8 +445,6 @@ grid.arrange(plot7, plot8, plot9, plot10, plot1_I)
 ```
 
 
-
-
 ## Doing the same thing for the *noise* training data
 ```{r}
 m1_noise <- update(m1, newdata = train_noise)
@@ -546,7 +543,7 @@ theme_classic()
 grid.arrange(plot1_noise, plot2_noise, plot3_noise, plot4_noise, plot5_noise, plot6_noise)
 grid.arrange(plot7_noise, plot8_noise, plot9_noise, plot10_noise, plot1_noise_I)
 ```
-
+```
 
 #Predictions from every posterior sample
 ```{r}
@@ -603,6 +600,7 @@ for (i in seq(1000)) {
   perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "noise" & perf_prob$type=="training"] <- accuracy(train_noise, truth = group, estimate = pred)[, ".estimate"]
   perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "noise" & perf_prob$type=="test"] <- (accuracy(test_noise_s, truth = group, estimate = pred)[, ".estimate"])
 }
+
 ```
 
 # Plotting the predictions w. uncertainty
@@ -619,7 +617,6 @@ ggplot(perf_prob, aes(y=as.numeric(accuracy) , x=type, color=type)) +
 
 
 ```{r}
-brms::conditional_effects(m1)
 
 ```
 
@@ -735,39 +732,116 @@ Data: https://www.dropbox.com/s/7ky1axvea33lgye/Ass3_empiricalData1.csv?dl=0
 real_data <- read_csv("Ass3_empiricalData1.csv")
 ```
 
+
 ```{r}
 #removing non-acoustic features
 real_data <- real_data %>%
-  mutate(ID = NewID,
+  mutate(PatID = NULL,
+    Gender= as.factor(Gender), 
+    NewID = as.factor(NewID),
     Trial = gsub("T", "", as.factor(Trial)),
+     Trial = as.factor(Trial),
     Language = NULL,
     Corpus = NULL,
-    Diagnosis = as.factor(Diagnosis), 
-    PatID=NULL
+    Diagnosis = as.factor(Diagnosis)
   )
-
 ```
+
 stratify
-cvms - balancing data, nice on continous variables
+cvms - balancing data, nice on continuous variables
 
 scale/standardize
 
 
 #Data budgetting
 ```{r}
-train_real <- fold(
-  real_data,
-  k= 3,
+
+partition <- partition(
+  real_data, 
+  p = 0.8, 
   cat_col = "Diagnosis",
-  cat_col = "Gender",
-  id_col = "ID",
-  parallel = F
-)
+   id_col = "NewID", 
+  list_out = F
+  )
+
+
+train_part <- partition %>% filter(.partitions == 1) 
+test_part <- partition %>% filter(.partitions == 2) 
+
 ```
 
 
+# Standardizing test and training set
+```{r}
+part_rec <- train_part %>% recipe(Diagnosis ~.) %>% 
+  update_role(NewID, Trial, Gender,  new_role = "Second level") %>%
+  update_role_requirements("Second level", bake=F) %>% 
+  step_scale(all_numeric()) %>%
+  step_center(all_numeric()) %>%
+  prep(train=train_part, retain = T)
+  
+
+#Using the recipe on the test data
+train_real <- juice(part_rec)
+test_real <- bake(part_rec, new_data = test_part)
 
 
+```
+
+
+```{r}
+plot_correlation(train_real)
+```
+
+```{r}
+control <- rfeControl(functions = rfFuncs , 
+                      method = "repeatedcv",
+                      verbose = F)
+
+y_train <- train_real$Diagnosis
+
+x_train <-train_real[,-c(395,396)] %>% as.data.frame()
+
+
+
+rfe_1 <- rfe(x = x_train,
+              y = as.factor(unlist(y_train)),
+             sizes = c(1:396),
+             repeats = 5, 
+             number = 10,
+             rfeControl = control)
+```
+
+
+#
+```{r}
+
+pca_train_ <-  recipe(Diagnosis ~., data = train_part) %>% 
+  update_role(NewID, Trial, Gender,  new_role = "id") %>%
+  step_scale(all_numeric()) %>%
+  step_center(all_numeric()) %>%
+  step_pca(all_numeric(), threshold = 0.5)
+
+pca_train_2 <-recipes::prep(pca_train_, retain = T)
+
+
+
+
+
+
+pca_train_2 <- tidy(pca_train_2, 3)
+
+low <- pca_train_2 %>% filter(value < 0.01 | value > -0.01)
+high <- pca_train_2 %>% filter(value >0.01 | value < -0.01)
+
+pca_train_2 %>%
+  filter(component %in% paste0("PC", 1:5)) %>%
+  mutate(component = fct_inorder(component)) %>%
+  ggplot(aes(value, terms, fill = terms)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~component, nrow = 1) +
+  labs(y = NULL)
+```
 
 
 
