@@ -547,111 +547,6 @@ grid.arrange(plot1_noise, plot2_noise, plot3_noise, plot4_noise, plot5_noise, pl
 grid.arrange(plot7_noise, plot8_noise, plot9_noise, plot10_noise, plot1_noise_I)
 ```
 
-# Assessing performance on the informed data
-```{r}
-# #train_inf
-# train_inf$pred_perc <- predict(m1)[,1] #one prediction per participant
-# train_inf <- train_inf %>% mutate(pred =as.factor(ifelse(pred_perc > 0.5, "HC", "SZ"))) #deciding if the prediction is HC/SZ
-# 
-# train_inf$pred <- factor(train_inf$pred, levels=c('SZ', 'HC'))
-# 
-# 
-# #train_noise
-# train_noise$pred_perc <- predict(m1_noise)[,1] #one prediction per participant
-# train_noise <- train_noise %>% mutate(pred =as.factor(ifelse(pred_perc > 0.5, "HC", "SZ")))#deciding if the prediction is HC/SZ
-# 
-# train_noise$pred <- factor(train_noise$pred, levels=c('SZ', 'HC'))
-
-```
-
-```{r}
-# #Train_inf performance
-# yardstick::conf_mat(train_inf, 
-#          truth = group,
-#          estimate = pred,
-#          dnn = c("Prediction", "Truth")) #Confusion matrix of how many participants were correctly guessed
-# 
-# metrics(train_inf, 
-#         truth = group, 
-#         estimate = pred) #.estimate is an average estimate of how well the model predicts
-# 
-# 
-# #Train_noise performance
-# yardstick::conf_mat(train_noise, 
-#          truth = group,
-#          estimate = av_pred,
-#          dnn = c("Prediction", "Truth")) #Confusion matrix of how many participants were correctly guessed
-# 
-# metrics(train_noise, 
-#          truth = group, 
-#         estimate = av_pred)#.estimate is an average estimate of how well the model predicts
-# 
-
-
-```
-
-
-
-
-
-# Predictions on the test data - both informed and noise
-
-```{r}
-# #inf
-# 
-# test_inf_s$av_pred_perc <- predict(m1,newdata = test_inf_s, allow_new_levels=T)[,1]
-# test_inf_s <- test_inf_s %>% mutate(av_pred =as.factor(ifelse(av_pred_perc > 0.5, "HC", "SZ")))
-# 
-# test_inf_s$av_pred <- factor(test_inf_s$av_pred, levels=c('SZ', 'HC'))
-# 
-# 
-# 
-# #noise
-# 
-# test_noise_s$av_pred_perc <- predict(m1, newdata = test_noise_s, allow_new_levels=T)[,1]
-# test_noise_s <- test_noise_s %>% mutate(av_pred =as.factor(ifelse(av_pred_perc > 0.5, "HC", "SZ")))
-# 
-# test_noise_s$av_pred <- factor(test_noise_s$av_pred, levels=c('SZ', 'HC'))
-# 
-# 
-# 
-# 
-# #test_inf
-# test_inf_s$pred_perc <- predict(m1)[,1] #one prediction per participant
-# train_inf <- train_inf %>% mutate(pred =as.factor(ifelse(pred_perc > 0.5, "HC", "SZ"))) #deciding if the prediction is HC/SZ
-# 
-# train_inf$pred <- factor(train_inf$pred, levels=c('SZ', 'HC'))
-# 
-# 
-# #test_noise
-# train_noise$pred_perc <- predict(m1_noise)[,1] #one prediction per participant
-# train_noise <- train_noise %>% mutate(pred =as.factor(ifelse(pred_perc > 0.5, "HC", "SZ")))#deciding if the prediction is HC/SZ
-# 
-# train_noise$pred <- factor(train_noise$pred, levels=c('SZ', 'HC'))
-```
-
-
-```{r}
-# #Test_inf performance
-# yardstick::conf_mat(test_inf_s, 
-#          truth = group,
-#          estimate = av_pred,
-#          dnn = c("Prediction", "Truth"))
-# 
-# 
-# #Test_noise performance
-# yardstick::conf_mat(test_noise_s, 
-#          truth = group,
-#          estimate = av_pred,
-#          dnn = c("Prediction", "Truth"))
-# 
-# metrics(test_inf_s, 
-#          truth = group, 
-#         estimate = av_pred)
-
-```
-
-
 
 #Predictions from every posterior sample
 ```{r}
@@ -674,8 +569,6 @@ fun_if <- function(x) {ifelse(x > 0.5, "HC", "SZ")}
 ```
 
 ```{r}
-
-
 train_inf_pred <- as_tibble(train)
 test_inf_s_pred <- as_tibble(test)
 train_noise_pred <- as_tibble(train_n)
@@ -730,25 +623,7 @@ brms::conditional_effects(m1)
 
 ```
 
-
-These are just the average predictions. And our model shows us that it can find predictions on noise, which is problematic. . But this is without including uncertainty. 
-
-We need to generate predictions of every posterior samples of our model and plot the full distribution of the performance/accuracy. 
-
-
-#
-
-
-
-
-
-
 # Feature importance
-
-Plotting the posterior 
-```{r}
-
-```
 
 ```{r}
 train_trees <- train_inf %>% mutate(ID = NULL,
@@ -863,8 +738,7 @@ real_data <- read_csv("Ass3_empiricalData1.csv")
 ```{r}
 #removing non-acoustic features
 real_data <- real_data %>%
-  mutate(ID = PatID,
-    NewID = NULL,
+  mutate(ID = NewID,
     Trial = gsub("T", "", as.factor(Trial)),
     Language = NULL,
     Corpus = NULL,
@@ -888,7 +762,6 @@ train_real <- fold(
   cat_col = "Gender",
   id_col = "ID",
   parallel = F
-  
 )
 ```
 
