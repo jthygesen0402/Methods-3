@@ -327,7 +327,6 @@ pp_check(m1_real, ndraws = 1000)
 ```{r}
 # Plotting the prior-posterior update checks for the real data
 
-
 d_df <- d_df %>% mutate(
   female = as.numeric(FEMALE_SZ) + as.numeric(FEMALE_HC), 
   male = as.numeric(MALE_SZ)+as.numeric(MALE_HC))
@@ -436,6 +435,7 @@ print(m1_real)
 
 pp_check(m1_real, ndraws = 1000)
 ```
+
 ```{r}
 # Plotting the prior-posterior update checks for the real data
 

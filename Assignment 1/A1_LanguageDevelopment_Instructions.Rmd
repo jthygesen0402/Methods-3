@@ -335,11 +335,24 @@ return(q_estimates)
 
 
 ```{r}
-#Making a nested df of all the wanted samole sizes
-
+#Making a nested df of all the wanted sample sizes
 all_samples <- tibble(samplesizes=samples) %>% mutate(m=map(samplesizes, power)) %>% unnest(m)
+```
 
 
+```{r}
+#plotting all the sample sizes together
+pp_plots <- all_samples %>%  
+  ggplot(aes(x = seed, y = mean, ymin = Q3_u   , ymax = Q1_l)) +
+  geom_hline(yintercept = c(0, .5), color ="pink") +
+  geom_pointrange(fatten = 1/2) +
+  facet_wrap(vars(samplesizes)) + 
+  labs(x = "seed",
+      y = expression(beta[1])) + 
+    ggtitle("Differences between ASD and TD across different sample sizes")
+
+  
+pp_plots
       
     
 ```
@@ -357,7 +370,6 @@ t <-  all_samples %>%
 
 ```{r}
 
-plot_list <- list()
 
 for (i in length(samples_sizes)){
   
@@ -373,7 +385,11 @@ for (i in length(samples_sizes)){
   
 }
 
+<<<<<<< HEAD
+
+=======
 facetw
+>>>>>>> 59fe6b2bb2abb686e5ec2043e7ffa1f57b7100f1
 
 
 ```
