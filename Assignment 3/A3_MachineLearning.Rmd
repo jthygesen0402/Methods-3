@@ -1015,3 +1015,40 @@ n
 ```
 
 ```{r}
+f1_real <- bf(Diagnosis ~  Intensity_Mean_Praat+ Intensity_SD_Praat+PSP_SD + Rd_Mean + Rd_MAD + MCEP0_IQR + MCEP1_IQR"            "MCEP2_Mean"           "MCEP5_IQR"           
+[10] "MCEP7_Mean"           "MCEP9_Mean"           "MCEP9_IQR"           
+[13] "MCEP10_Median"        "MCEP10_IQR"           "MCEP11_IQR"          
+[16] "MCEP12_IQR"           "MCEP13_Mean"          "MCEP14_IQR"          
+[19] "MCEP15_Mean"          "MCEP17_Mean"          "MCEP19_Median"       
+[22] "MCEP19_IQR"           "MCEP22_Median"        "HMPDD0_SD"           
+[25] "HMPDD6_IQR"           "HMPDD7_IQR"           "Harmonicity_SD"      
+[28] "Clarity_Mean"         "MeanTurnDur_Cova"     "MeanTurnDur_Praat"   
+[31] "Gender" + (1+Trial|NewID))
+```
+
+
+```{r}
+#Fitting the model
+m1_real <-brm(
+  f1_real,
+  data=t_new,
+  family = bernoulli,
+  prior = p1,
+  sample_prior = T,
+  #backend = "cmdstanr",
+  #threads = threading(2),
+  chains = 2,
+  cores = 2,
+  control = list(
+    adapt_delta = 0.9,
+    max_treedepth = 20),
+  stan_model_args = list(stanc_options=list("01"))
+)
+
+print(m1_real)
+
+pp_check(m1_real, ndraws = 1000)
+```
+
+
+
