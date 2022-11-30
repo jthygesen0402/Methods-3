@@ -956,16 +956,18 @@ test_real <- bake(part_rec, new_data = test_part)
 
 ```
 
-
+#Variable selection by correlation
 ```{r}
 train_num <- select_if(train_real, is.numeric)
 train_factor <- select_if(train_real, is.factor)
 
-cutoffs <- findCorrelation(cor(train_num), cutoff = 0.7)
+cutoffs <- findCorrelation(cor(train_num), cutoff = 0.65)
 
 new_df <- train_num[,-cutoffs]
 
 t <- cbind(new_df, train_factor)
+
+plot_correlation(t)
 
 ```
 
