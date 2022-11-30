@@ -775,22 +775,6 @@ ggplot(perf_prob, aes(y=as.numeric(accuracy) , x=type, color=type)) +
 ```
 
 
-```{r}
-
-```
-
-
-These are just the average predictions. And our model shows us that it can find predictions on noise, which is problematic. . But this is without including uncertainty. 
-
-We need to generate predictions of every posterior samples of our model and plot the full distribution of the performance/accuracy. 
-
-
-#
-
-
-
-
-
 
 # Feature importance
 
@@ -883,16 +867,6 @@ am_i_really_important %>% model_parts() %>% plot() #SVM
 am_i_really_important_2 %>% model_parts() %>% plot() #RandomForest
 
 ```
-_______
-^^ Global importance - generally, which are the features that matter the most?
-
-
-### Discuss why our noisy variables are "more" important and why we don't take them out
-____
-
-
-
-
 
 
 Part III
@@ -973,7 +947,7 @@ plot_correlation(t)
 ```
 
 
-#PCA
+#PCA - feature selcetion inception
 ```{r}
 
 pca_train_ <-  recipe(Diagnosis ~., data = t) %>% 
@@ -997,7 +971,7 @@ pca_train_2 %>%
   labs(y = NULL)
 
 
-pca1 <- pca_train_2 %>% filter(component == "PC1") %>% filter(value < 0.05)
+pca1 <- pca_train_2 %>% filter(component == "PC1") %>% filter(value < 0.05) 
 
 terms <- pca1$terms
 t_new <- t[,!(names(t) %in% terms)] 
