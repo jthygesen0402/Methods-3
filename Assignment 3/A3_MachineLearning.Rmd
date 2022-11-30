@@ -958,23 +958,33 @@ test_real <- bake(part_rec, new_data = test_part)
 
 
 ```{r}
-plot_correlation(train_real)
+train_num <- select_if(train_real, is.numeric)
+train_factor <- select_if(train_real, is.factor)
+
+cutoffs <- findCorrelation(cor(train_num), cutoff = 0.7)
+
+new_df <- train_num[,-cutoffs]
+
+t <- cbind(new_df, train_factor)
+
 ```
 
-#Trying to do feature selcetion
+
+
+#Trying to do feature selcetion.. it's not really working
 ```{r}
-control <- rfeControl(functions = lrFuncs , 
+control <- rfeControl(functions = nbFuncs , 
                       method = "repeatedcv",
                       verbose = F)
 
-y_train <- train_real$Diagnosis
+y_train <- train_real$Diagnosis %>% unlist()
 
 x_train <-train_real[,-c(395,396)] %>% as.data.frame()
 
 
 
 rfe_1 <- rfe(x = x_train,
-              y = as.factor(unlist(y_train)),
+              y = (y_train),
              sizes = c(1:396),
              rfeControl = control)
 
@@ -1016,18 +1026,18 @@ pca_train_2 %>%
 
 
 ```{r}
-LogisticRegression <- logistic_reg() %>%
-  set_mode("classification") %>% 
-  set_engine("glm") %>%
-  fit(Diagnosis ~ . , data = real_sub_data)
-dd <- explain_tidymodels(LogisticRegression, 
+#LogisticRegression <- logistic_reg() %>%
+  #set_mode("classification") %>% 
+  #set_engine("glm") %>%
+  #fit(Diagnosis ~ . , data = real_sub_data)
+#dd <- explain_tidymodels(LogisticRegression, 
                                      data = real_sub_data, 
                                      y= as.numeric(real_sub_data$group)-1,
                                      label= "GLM", 
                                      verbose = FALSE)
-dd <- model_parts(dd) 
-plot(dd)
-caret::findLinearCombos(real_sub_data)
+#dd <- model_parts(dd) 
+#plot(dd)
+#caret::findLinearCombos(real_sub_data)
 ```
 
 
