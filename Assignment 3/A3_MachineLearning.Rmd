@@ -956,15 +956,16 @@ test_real <- bake(part_rec, new_data = test_part)
 
 ```
 
+
 #Variable selection by correlation
 ```{r}
 train_num <- select_if(train_real, is.numeric)
 train_factor <- select_if(train_real, is.factor)
 
+#Finding the highly correlated variables. Setting the threshold to 0.65
 cutoffs <- findCorrelation(cor(train_num), cutoff = 0.65)
 
 new_df <- train_num[,-cutoffs]
-
 t <- cbind(new_df, train_factor)
 
 plot_correlation(t)
@@ -972,33 +973,10 @@ plot_correlation(t)
 ```
 
 
-
-#Trying to do feature selcetion.. it's not really working
-```{r}
-control <- rfeControl(functions = nbFuncs , 
-                      method = "repeatedcv",
-                      verbose = F)
-
-y_train <- train_real$Diagnosis %>% unlist()
-
-x_train <-train_real[,-c(395,396)] %>% as.data.frame()
-
-
-
-rfe_1 <- rfe(x = x_train,
-              y = (y_train),
-             sizes = c(1:396),
-             rfeControl = control)
-
-
-
-```
-
-
 #PCA
 ```{r}
 
-pca_train_ <-  recipe(Diagnosis ~., data = train_part) %>% 
+pca_train_ <-  recipe(Diagnosis ~., data = t) %>% 
   update_role(NewID, Trial, Gender,  new_role = "id") %>%
   step_scale(all_numeric()) %>%
   step_center(all_numeric()) %>%
@@ -1006,15 +984,9 @@ pca_train_ <-  recipe(Diagnosis ~., data = train_part) %>%
 
 pca_train_2 <-recipes::prep(pca_train_, retain = T)
 
-
-
-
-
-
 pca_train_2 <- tidy(pca_train_2, 3)
 
-low <- pca_train_2 %>% filter(value < 0.01 | value > -0.01)
-high <- pca_train_2 %>% filter(value >0.01 | value < -0.01)
+
 
 pca_train_2 %>%
   filter(component %in% paste0("PC", 1:5)) %>%
@@ -1023,24 +995,21 @@ pca_train_2 %>%
   geom_col(show.legend = FALSE) +
   facet_wrap(~component, nrow = 1) +
   labs(y = NULL)
-```
 
+
+pca1 <- pca_train_2 %>% filter(component == "PC1") %>% filter(value < 0.05)
+
+terms <- pca1$terms
+t_new <- t[,!(names(t) %in% terms)] 
+
+t_new$.partitions <- NULL
+
+```
 
 
 ```{r}
-#LogisticRegression <- logistic_reg() %>%
-  #set_mode("classification") %>% 
-  #set_engine("glm") %>%
-  #fit(Diagnosis ~ . , data = real_sub_data)
-#dd <- explain_tidymodels(LogisticRegression, 
-                                     data = real_sub_data, 
-                                     y= as.numeric(real_sub_data$group)-1,
-                                     label= "GLM", 
-                                     verbose = FALSE)
-#dd <- model_parts(dd) 
-#plot(dd)
-#caret::findLinearCombos(real_sub_data)
+n <- names(t_new)
+n <- n[-c(31,33)]
+n
+
 ```
-
-
-
