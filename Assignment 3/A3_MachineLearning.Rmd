@@ -626,7 +626,7 @@ test_noise_s$av_pred_perc <- predict(m1_noise, newdata = test_noise_s, allow_new
 test_noise_s <- test_noise_s %>% mutate(av_pred =as.factor(ifelse(av_pred_perc > 0.5, "HC", "SZ")))
 
 test_noise_s$av_pred <- factor(test_noise_s$av_pred, levels=c('SZ', 'HC'))
-=======
+
 # #inf
 # 
 # test_inf_s$av_pred_perc <- predict(m1,newdata = test_inf_s, allow_new_levels=T)[,1]
@@ -658,7 +658,7 @@ test_noise_s$av_pred <- factor(test_noise_s$av_pred, levels=c('SZ', 'HC'))
 # train_noise <- train_noise %>% mutate(pred =as.factor(ifelse(pred_perc > 0.5, "HC", "SZ")))#deciding if the prediction is HC/SZ
 # 
 # train_noise$pred <- factor(train_noise$pred, levels=c('SZ', 'HC'))
->>>>>>> 2a0c4ce0e328077bd24c1ff011e4f86fddd70083
+
 ```
 
 
@@ -705,7 +705,6 @@ fun_if <- function(x) {ifelse(x > 0.5, "HC", "SZ")}
 ```
 
 ```{r}
-<<<<<<< HEAD
 for (i in seq(1000)){
   train_inf$predictions <- as.factor(ifelse(train[i,] > 0.5, "HC", "SZ")) %>%  factor(levels=c('SZ', 'HC'))
   test_inf_s$predictions <- as.factor(ifelse(test[i,] > 0.5, "HC", "SZ")) %>% factor(levels=c('SZ', 'HC'))
@@ -722,7 +721,7 @@ for (i in seq(1000)){
     perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "noise" & perf_prob$type=="training"] <- accuracy(train_noise, truth = group, estimate = predictions)[, ".estimate"]
     
      perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "noise" & perf_prob$type=="test"] <- yardstick::accuracy(test_noise_s, truth = group, estimate = predictions)[, ".estimate"]
-=======
+
 
 
 train_inf_pred <- as_tibble(train)
@@ -758,7 +757,7 @@ for (i in seq(1000)) {
   perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "informed" & perf_prob$type=="test"] <- (accuracy(test_inf_s, truth = group, estimate = pred)[, ".estimate"])
   perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "noise" & perf_prob$type=="training"] <- accuracy(train_noise, truth = group, estimate = pred)[, ".estimate"]
   perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "noise" & perf_prob$type=="test"] <- (accuracy(test_noise_s, truth = group, estimate = pred)[, ".estimate"])
->>>>>>> 2a0c4ce0e328077bd24c1ff011e4f86fddd70083
+
 }
 
 ```
@@ -795,10 +794,6 @@ We need to generate predictions of every posterior samples of our model and plot
 
 # Feature importance
 
-Plotting the posterior 
-```{r}
-
-```
 
 ```{r}
 train_trees <- train_inf %>% mutate(ID = NULL,
@@ -888,12 +883,12 @@ am_i_really_important %>% model_parts() %>% plot() #SVM
 am_i_really_important_2 %>% model_parts() %>% plot() #RandomForest
 
 ```
-
+_______
 ^^ Global importance - generally, which are the features that matter the most?
 
 
 ### Discuss why our noisy variables are "more" important and why we don't take them out
-
+____
 
 
 
@@ -924,11 +919,6 @@ real_data <- real_data %>%
     Diagnosis = as.factor(Diagnosis)
   )
 ```
-
-stratify
-cvms - balancing data, nice on continuous variables
-
-scale/standardize
 
 
 #Data budgetting
@@ -971,8 +961,9 @@ test_real <- bake(part_rec, new_data = test_part)
 plot_correlation(train_real)
 ```
 
+#Trying to do feature selcetion
 ```{r}
-control <- rfeControl(functions = rfFuncs , 
+control <- rfeControl(functions = lrFuncs , 
                       method = "repeatedcv",
                       verbose = F)
 
@@ -985,8 +976,6 @@ x_train <-train_real[,-c(395,396)] %>% as.data.frame()
 rfe_1 <- rfe(x = x_train,
               y = as.factor(unlist(y_train)),
              sizes = c(1:396),
-             repeats = 5, 
-             number = 10,
              rfeControl = control)
 
 
@@ -994,7 +983,7 @@ rfe_1 <- rfe(x = x_train,
 ```
 
 
-#
+#PCA
 ```{r}
 
 pca_train_ <-  recipe(Diagnosis ~., data = train_part) %>% 
