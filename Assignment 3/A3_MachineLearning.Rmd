@@ -25,7 +25,7 @@ Remember: plots are very very important to communicate your process and results.
 pacman::p_load(tidyverse,purrr, brms, cmdstanr, bayesplot, rstanarm, viridis, gridExtra, RColorBrewer, reshape2, tidymodels, yardstick, corrplot, DALEX, DALEXtra, randomForest, xgboost, kernlab, caret, cvms, groupdata2, DataExplorer, klaR, dplyr, mlbench)
 
 
-set.seed(3)
+set.seed(7)
 ```
 
 
@@ -48,10 +48,10 @@ people <- 200
 trials <- 10
 
 EffectsMeans_inform <- c(0.25,-0.55,-0.75,-1.26,0.05,1.89,0,0,0,0)
-EffectsSD_inform <- c(0.5, 0.29, 0.39,0.63,0.59,0.62,1,1,1,1)
+EffectsSD_inform <- c(0.5, 0.29, 0.39,0.63,0.59,0.62,0.2,0.2,0.2,0.2)
 
 EffectsMeans_noise <- rep(0,10)
-EffectsSD_noise <- rep(1,10)
+EffectsSD_noise <- rep(0.2,10)
 
 TrialSD <- 0.5
 Error <- 0.2
@@ -60,7 +60,6 @@ Error <- 0.2
 
 ```{r}
 #Creating a function that can simulate the true underlying value for all variables for a participant
-
 true_val <- function(means, SDs){
   true_df <- data.frame(Map(rnorm, n=1, mean=means, sd=SDs))
   names(true_df) <- c(paste0("v", seq(10)))
@@ -122,6 +121,7 @@ sim_d_noise <- data.frame(
 sim_d_noise$values <- map(EffectsMeans_noise, true_val, SDs=EffectsSD_noise) #map effect_means on the true_df as a nested df
 
 sim_d_noise <- unnest(sim_d_noise, cols = values) #Now we have a df with one effect size per variable per participant
+
 ```
 
 ```{r}
@@ -148,7 +148,7 @@ matched_noise<- sim_d_noise %>%
 ```
 
 
-#Visualiziing the data :(
+#Visualiziing the data
 ```{r}
 #Making the df into long format 
 long_df <- matched_data %>%
@@ -288,7 +288,7 @@ get_prior(data=train_inf,
 
 p1 <- c(
   prior(normal(0,1), class=Intercept),
-  prior(normal(0,0.3), class=b), 
+  prior(normal(0,0.5), class=b), 
   prior(normal(0,0.3), class= sd)
 )
 
@@ -304,8 +304,8 @@ m1_prior <-brm(
   family = bernoulli(link = "logit"),
   prior = p1,
   sample_prior = "only",
-  backend = "cmdstanr",
-  threads = threading(2),
+  #backend = "cmdstanr",
+  #threads = threading(2),
   iter = 1000,
   chains = 2,
   cores = 2,
@@ -330,8 +330,8 @@ m1 <- brm(
   family = bernoulli,
   prior = p1,
   sample_prior = T,
-  backend = "cmdstanr",
-  threads = threading(2),
+  #backend = "cmdstanr",
+  #threads = threading(2),
   iter = 1000,
   chains = 2,
   cores = 2,
@@ -355,77 +355,77 @@ plot1_I <- ggplot(m1_posterior) +
 geom_histogram(aes(prior_Intercept), fill="darkblue", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(b_Intercept), fill="darkgreen", color="black",alpha=0.6, bins = 30)+
 xlab('Intercept') +
-labs(title="Intercept: Prior-posterior update check of the effect size") +
+labs(title="Intercept: PPU-check of effect size (informed data)") +
 theme_classic()
 
 plot1 <- ggplot(m1_posterior) +
 geom_histogram(aes(prior_b), fill="darkblue", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(b_Intercept), fill="darkgreen", color="black",alpha=0.6, bins = 30)+
 xlab('Beta') +
-labs(title="v1: Prior-posterior update check of the effect size") +
+labs(title="v1: PPU-check of effect size (informed data)") +
 theme_classic()
 
 plot2 <- ggplot(m1_posterior) +
 geom_histogram(aes(prior_b), fill="darkblue", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(b_v2_obs_matched), fill="darkgreen", color="black",alpha=0.6, bins = 30)+
 xlab('Beta') +
-labs(title="v2: Prior-posterior update check of the effect size") +
+labs(title="v2: PPU-check of effect size (informed data)") +
 theme_classic()
 
 plot3 <- ggplot(m1_posterior) +
 geom_histogram(aes(prior_b), fill="darkblue", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(b_v3_obs_matched), fill="darkgreen", color="black",alpha=0.6, bins = 30)+
 xlab('Beta') +
-labs(title="v3: Prior-posterior update check of the effect size") +
+labs(title="v3:PPU-check of effect size (informed data)") +
 theme_classic()
 
 plot4 <- ggplot(m1_posterior) +
 geom_histogram(aes(prior_b), fill="darkblue", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(b_v4_obs_matched), fill="darkgreen", color="black",alpha=0.6, bins = 30)+
 xlab('Beta') +
-labs(title="v4: Prior-posterior update check of the effect size") +
+labs(title="v4: PPU-check of effect size (informed data)") +
 theme_classic()
 
 plot5 <- ggplot(m1_posterior) +
 geom_histogram(aes(prior_b), fill="darkblue", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(b_v5_obs_matched), fill="darkgreen", color="black",alpha=0.6, bins = 30)+
 xlab('Beta') +
-labs(title="v5: Prior-posterior update check of the effect size") +
+labs(title="v5: PPU-check of effect size (informed data)") +
 theme_classic()
 
 plot6 <- ggplot(m1_posterior) +
 geom_histogram(aes(prior_b), fill="darkblue", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(b_v6_obs_matched), fill="darkgreen", color="black",alpha=0.6, bins = 30)+
 xlab('Beta') +
-labs(title="v6: Prior-posterior update check of the effect size") +
+labs(title="v6: PPU-check of effect size (informed data)") +
 theme_classic()
 
 plot7 <- ggplot(m1_posterior) +
 geom_histogram(aes(prior_b), fill="darkblue", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(b_v7_obs_matched), fill="darkgreen", color="black",alpha=0.6, bins = 30)+
 xlab('Beta') +
-labs(title="v7: Prior-posterior update check of the effect size") +
+labs(title="v7: PPU-check of effect size (informed data)") +
 theme_classic()
 
 plot8 <- ggplot(m1_posterior) +
 geom_histogram(aes(prior_b), fill="darkblue", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(b_v8_obs_matched), fill="darkgreen", color="black",alpha=0.6, bins = 30)+
 xlab('Beta') +
-labs(title="v_8 Prior-posterior update check of the effect size") +
+labs(title="v_8 PPU-check of effect size (informed data)") +
 theme_classic()
 
 plot9 <- ggplot(m1_posterior) +
 geom_histogram(aes(prior_b), fill="darkblue", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(b_v9_obs_matched), fill="darkgreen", color="black",alpha=0.6, bins = 30)+
 xlab('Beta') +
-labs(title="v9: Prior-posterior update check of the effect size") +
+labs(title="v9: PPU-check of effect size (informed data)") +
 theme_classic()
 
 plot10 <- ggplot(m1_posterior) +
 geom_histogram(aes(prior_b), fill="darkblue", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(b_v10_obs_matched), fill="darkgreen", color="black",alpha=0.6, bins = 30)+
 xlab('Beta') +
-labs(title="v10: Prior-posterior update check of the effect size") +
+labs(title="v10: PPU-check of effect size (informed data)") +
 theme_classic()
 
 ```
@@ -934,43 +934,16 @@ plot_correlation(t)
 ```
 
 
-#PCA - feature selcetion inception
+#Recursive Feature Selection 
 ```{r}
-
-pca_train_ <-  recipe(Diagnosis ~., data = t) %>% 
-  update_role(NewID, Trial, Gender,  new_role = "id") %>%
-  step_scale(all_numeric()) %>%
-  step_center(all_numeric()) %>%
-  step_pca(all_numeric(), threshold = 0.5)
-
-pca_train_2 <-recipes::prep(pca_train_, retain = T)
-
-pca_train_2 <- tidy(pca_train_2, 3)
+#Getting the top 10 most important features
 
 
-
-pca_train_2 %>%
-  filter(component %in% paste0("PC", 1:5)) %>%
-  mutate(component = fct_inorder(component)) %>%
-  ggplot(aes(value, terms, fill = terms)) +
-  geom_col(show.legend = FALSE) +
-  facet_wrap(~component, nrow = 1) +
-  labs(y = NULL)
-
-
-pca1 <- pca_train_2 %>% filter(component == "PC1") %>% filter(value < 0.05) 
-
-terms <- pca1$terms
-t_new <- t[,!(names(t) %in% terms)] 
-
-t_new$.partitions <- NULL
 
 ```
 
 
 ```{r}
-n <- names(t_new)
-n <- n[-c(31,33)]
-n
+
 
 ```
