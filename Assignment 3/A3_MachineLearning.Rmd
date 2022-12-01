@@ -796,5 +796,80 @@ importance <- varImp(model, scale=FALSE)
 print(importance)
 # plot importance
 plot(importance)
+
 ```
+
+```{r}
+relevant_cols <- t %>% dplyr::select(Harmonicity_SD, HMPDD0_SD, Clarity_Mean, MCEP2_Mean, CreakProbability_SD, F0_SD_Praat, Pitch_IQR, MCEP23_Mean, MCEP8_Median, Intensity_SD_Praat)
+
+train_select <- cbind(train_factor, relevant_cols)
+```
+
+```{r}
+f1_real <- bf(Diagnosis ~ 1 + Harmonicity_SD+ HMPDD0_SD+ Clarity_Mean+ MCEP2_Mean+ CreakProbability_SD+ F0_SD_Praat+ Pitch_IQR+ MCEP23_Mean+ MCEP8_Median+ Intensity_SD_Praat + (1+Trial|NewID))
+```
+
+
+```{r}
+get_prior(data=train_select,
+          family=bernoulli,
+          f1_real)
+
+p1_real <- c(
+  brms::prior(normal(0,1), class=Intercept),
+  brms::prior(normal(0,0.3), class=b), 
+  brms::prior(normal(0,0.3), class= sd)
+)
+
+
+```
+
+```{r}
+#Fitting the model to priors only
+
+m1_real_prior <-brm(
+  f1_real,
+  data=train_select,
+  family = bernoulli(link = "logit"),
+  prior = p1_real,
+  sample_prior = "only",
+  backend = "cmdstanr",
+  threads = threading(2),
+  iter = 1000,
+  chains = 2,
+  cores = 2,
+  control = list(
+    adapt_delta = 0.9,
+    max_treedepth = 20)
+)
+
+
+# Running Prior predictive check
+brms::pp_check(m1_real_prior, ndraws =1000)
+```
+
+
+### Fitting the model to the data
+```{r}
+m1_real <- brm(
+  f1_real,
+  data=train_select,
+  family = bernoulli,
+  prior = p1_real,
+  sample_prior = T,
+  backend = "cmdstanr",
+  threads = threading(2),
+  iter = 1000,
+  chains = 2,
+  cores = 2,
+  control = list(
+    adapt_delta = 0.9,
+    max_treedepth = 20)
+)
+
+pp_check(m1_real, ndraws = 1000)
+m1_real
+#plot(m1)
+```
+
 
