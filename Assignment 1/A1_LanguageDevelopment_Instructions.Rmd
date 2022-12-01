@@ -342,47 +342,27 @@ return(q_estimates)
 
 all_samples <- tibble(samplesizes=samples) %>% mutate(m=map(samplesizes, power)) %>% unnest(m)
 
-
-      
-    
-```
-
-
-
-```{r}
-#plotting the differences
-plot <- list(NA)
-
-t <-  all_samples %>%  
-    filter(samplesizes == 30)
-```
-
-
-```{r}
-
-plot_list <- list()
-
-for (i in length(samples_sizes)){
+#plotting all the sample sizes together
+pp_plots <- all_samples %>%  
+  ggplot(aes(x = seed, y = mean, ymin = Q3_u   , ymax = Q1_l)) +
+  geom_hline(yintercept = c(0, .5), color ="pink") +
+  geom_pointrange(fatten = 1/2) +
+  facet_wrap(vars(samplesizes)) + 
+  labs(x = "seed",
+      y = expression(beta[1])) + 
+    ggtitle("Differences between ASD and TD across different sample sizes")
   
-    variable <-  all_samples %>%  
-    filter(samplesizes == samples_sizes[i]) %>% 
-    ggplot(aes(x = seed, y = mean, ymin = Q3_u   , ymax = Q1_l)) +
-    geom_hline(yintercept = c(0, .5), color = "pink") +
-    geom_pointrange(fatten = 1/2) +
-    labs(x = "seed",
-       y = expression(beta[1]))
-   
-  
-  }
-
-
+pp_plots  
 ```
 
-
 ```{r}
-tt %>% 
-  mutate(check = ifelse(Q1_l > 0, 1, 0)) %>% 
-  summarise(power = mean(check))
+all_samples <- all_samples %>% 
+  mutate(check = ifelse(Q1_l >0,1,0), samplesizes = as.factor(samplesizes))
+
+
+all_samples %>% group_by(samplesizes) %>% 
+  dplyr::summarise(power=mean(check))
+
 ```
 
 
