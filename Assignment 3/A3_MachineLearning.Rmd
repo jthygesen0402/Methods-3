@@ -22,14 +22,18 @@ The report for the exam, thus, consists of the answer to all the following promp
 Remember: plots are very very important to communicate your process and results.
 
 ```{r}
-pacman::p_load(tidyverse,purrr, brms, cmdstanr, bayesplot, rstanarm, viridis, gridExtra, RColorBrewer, reshape2, tidymodels, yardstick, corrplot, DALEX, DALEXtra)
+pacman::p_load(tidyverse,purrr, brms, cmdstanr, bayesplot, rstanarm, viridis, gridExtra, RColorBrewer, reshape2, tidymodels, yardstick, corrplot, DALEX, DALEXtra, randomForest, xgboost, kernlab, caret, cvms, groupdata2)
+
 
 set.seed(3)
 ```
 
+
 ```{r}
 color_scheme_set(scheme = "teal")
 ```
+
+______________________________
 
 *update_role* 
 - assign the role of the column 
@@ -38,15 +42,18 @@ update_role(ID, trail, new_role ="second level")
 Useful in PCA and when making our recipe
 
 
+__________________________________
 
 
-## Part I - Simulating data
+
+# Part I - Simulating data
 
 Use the meta-analysis reported in Parola et al (2020), *create a simulated dataset* with 100 matched pairs of schizophrenia and controls, each participant producing 10 repeated measures (10 trials with their speech recorded). for each of these "recordings" (data points) produce 10 acoustic measures: 6 from the meta-analysis, 4 with just random noise. Do the same for a baseline dataset including only 10 noise variables. 
 Tip: see the slides for the code. 
 
 
 ```{r}
+#Setting up all the parameters of the simulation
 people <- 200
 trials <- 10
 
@@ -62,12 +69,15 @@ Error <- 0.2
 
 
 ```{r}
+#Creating a function that can simulate the true underlying value for all variables for a participant
+
 true_val <- function(means, SDs){
   true_df <- data.frame(Map(rnorm, n=1, mean=means, sd=SDs))
   names(true_df) <- c(paste0("v", seq(10)))
   true_df <- as_tibble(true_df)
 }
 ```
+
 
 
 ## Simulation of *informed data*
@@ -77,10 +87,9 @@ true_val <- function(means, SDs){
 sim_d <- data.frame( 
   ID = seq(people/2))
 
-sim_d$values <- map(EffectsMeans_inform, true_val, SDs=EffectsSD_inform) #map effect_means on the true_df as a nested df
+sim_d$values <- map(EffectsMeans_inform, true_val, SDs=EffectsSD_inform) #map effect_means on the sim_d as a nested df
 
 sim_d <- unnest(sim_d, cols = values)#Now we have a df with one effect size per variable per participant
-
 ```
 
 
@@ -94,6 +103,8 @@ sim_d <- sim_d %>%
   rowwise%>% 
   mutate(across(starts_with("v"), ~rnorm(1, mean = rnorm(1,mean=.x, sd=TrialSD), sd = Error), .names="{.col}_obs"))
 
+# For each trial, simulate a value that is drawn from the underlying mean with TrialSD as SD and simulate error on top of that
+
 #Making matched pairs
 pairs <- expand.grid(group = c("SZ", "HC"), ID=seq(people/2))
 
@@ -104,7 +115,7 @@ sim_d <- merge(sim_d, pairs)
 
 ```{r}
 #Differentiating between SZ and HC 
-matched_data<- sim_d %>% 
+matched_data <- sim_d %>% 
   rowwise %>%  
   mutate(across(ends_with("_obs"), ~if_else(group == "SZ", (.x/2), -(.x/2)), .names ="{.col}_matched")) %>%
   select(ID, trial, group, ends_with("_matched"))
@@ -147,7 +158,7 @@ matched_noise<- sim_d_noise %>%
 ```
 
 
-#Visualiziing the data 
+#Visualiziing the data :(
 ```{r}
 #Making the df into long format 
 long_df <- matched_data %>%
@@ -159,8 +170,7 @@ long_df %>%
   scale_color_brewer(palette = "Paired") + 
   facet_wrap(~variable) + 
   theme_grey() + 
-  ggtitle("Effect sizes of variables")
-
+  ggtitle("Effect sizes across variables")
 
 
 #Making the df into long format 
@@ -173,13 +183,10 @@ long_df_noise %>%
   scale_color_brewer(palette = "Accent") + 
   facet_wrap(~variable) + 
   theme_grey() + 
-  ggtitle("Effect sizes of variables on noise data")
-
+  ggtitle("Effect sizes across variables on noise data")
 ```
 
-
-
-## Part II - ML pipeline on simulated data
+# Part II - ML pipeline on simulated data
 
 On the two simulated datasets (separately) build a machine learning pipeline: 
 *i)* create a data budget (e.g. balanced training and test sets) 
@@ -192,68 +199,85 @@ On the two simulated datasets (separately) build a machine learning pipeline:
 
 *v)* discuss whether performance is as expected and feature importance is as expected.
 
-
 Bonus question: replace the bayesian multilevel regression with a different algorithm, e.g. SVM or random forest (but really, anything you'd like to try).
 
 
 
-#Data budgetting and preprocessing on the informed data
+##Informed data
+
+##Data budgetting and preprocessing on the informed data
 ```{r}
 #Splitting data 80/20
-spl <- sample(seq(people/2), 20)
+spl <- sample(seq(people/2), people/2*0.2)
 
-train_inf <- matched_data %>% subset(!(ID %in% spl)) %>% mutate(ID = as.factor(ID), trial = as.factor(trial))
-test_inf <- matched_data %>% subset(ID %in% spl) %>% mutate(ID = as.factor(ID), trial = as.factor(trial))
+train_inf <- matched_data %>% 
+  subset(!(ID %in% spl)) %>% 
+  mutate(ID=as.factor(ID), trial=as.factor(trial))
+
+test_inf <- matched_data %>% 
+  subset(ID %in% spl) %>% 
+  mutate(ID=as.factor(ID), trial=as.factor(trial))
+
 
 ```
 
 
 ```{r}
 #Centering the training data
-rec_informed <- train_inf %>% recipe(group ~.) %>% 
+recipe_inf <- train_inf %>% recipe(group ~.) %>% 
   update_role(ID, trials, new_role = "Second level") %>%
-  update_role_requirements("Second level", bake = F) %>% 
+  update_role_requirements("Second level", bake=F) %>% 
   step_scale(all_numeric()) %>%
   step_center(all_numeric()) %>%
   prep(train=train_inf, retain = T)
   
 
 #Using the recipe on the test data
-train_inf <- juice(rec_informed)
-test_inf <- bake(rec_informed, new_data = test_inf)
+train_inf <- juice(recipe_inf)
+test_inf_s<- bake(recipe_inf, new_data = test_inf)
+
+test_inf_s$ID <- test_inf$ID
+
 ```
 
-
-
 ## Data budgetting and preprocessing on the *noise* data set
+
 ```{r}
 #Splitting data 80/20
-train_noise <- matched_noise %>% subset(!(ID %in% spl)) %>% mutate(ID = as.factor(ID), trial = as.factor(trial))
-test_noise <- matched_noise %>% subset(ID %in% spl) %>% mutate(ID = as.factor(ID), trial = as.factor(trial))
+train_noise <- matched_noise %>%
+  subset(!(ID %in% spl)) %>%
+  mutate(ID=as.factor(ID), trial=as.factor(trial))
+
+test_noise <- matched_noise %>% 
+  subset(ID %in% spl) %>% 
+  mutate(ID=as.factor(ID), trial=as.factor(trial))
 
 ```
 
 
 ```{r}
 #Centering the training data
-rec_noise <- train_noise %>% recipe(group ~.) %>% 
+recipe_noise <- train_noise %>% recipe(group ~.) %>% 
   update_role(ID, trials, new_role = "Second level") %>%
-  update_role_requirements("Second level", bake = F) %>% 
+  update_role_requirements("Second level", bake=F) %>% 
   step_scale(all_numeric()) %>%
   step_center(all_numeric()) %>%
   prep(train=train_noise, retain = T)
   
 
 #Using the recipe on the test data
-train_noise <- juice(rec_noise)
-test_noise <- bake(rec_noise, new_data = test_noise)
+train_noise <- juice(recipe_noise)
+test_noise_s <- bake(recipe_noise, new_data = test_noise)
+
+test_noise_s$ID <- test_noise$ID
 
 ```
 
 
 
+## Setting up the model
 
-# Choosing a classification algorithm - Logistic Regression
+### Choosing a classification algorithm - Logistic Regression - Setting priors
 ```{r}
 #Setting up the formula
 
@@ -263,6 +287,7 @@ f1 <- bf(group ~ 1 + v1_obs_matched+ v2_obs_matched + v3_obs_matched + v4_obs_ma
 ```
 
 ```{r}
+#Setting up priors
 
 get_prior(data=train_inf, 
           family = bernoulli, 
@@ -273,9 +298,11 @@ p1 <- c(
   prior(normal(0,0.3), class=b), 
   prior(normal(0,0.3), class= sd)
 )
+
 ```
 
 ```{r}
+#Fitting the model to priors only
 
 m1_prior <-brm(
   f1,
@@ -283,9 +310,9 @@ m1_prior <-brm(
   family = bernoulli(link = "logit"),
   prior = p1,
   sample_prior = "only",
-  #backend = "cmdstanr",
-  #threads = threading(2),
-  iter = 2000,
+  backend = "cmdstanr",
+  threads = threading(2),
+  iter = 1000,
   chains = 2,
   cores = 2,
   control = list(
@@ -293,11 +320,15 @@ m1_prior <-brm(
     max_treedepth = 20)
 )
 
+m1_prior
 
 
+# Running Prior predictive check
 pp_check(m1_prior, ndraws =1000)
 ```
 
+
+### Fitting the model to the data
 ```{r}
 m1 <- brm(
   f1,
@@ -305,8 +336,8 @@ m1 <- brm(
   family = bernoulli,
   prior = p1,
   sample_prior = T,
-  #backend = "cmdstanr",
-  #threads = threading(2),
+  backend = "cmdstanr",
+  threads = threading(2),
   iter = 1000,
   chains = 2,
   cores = 2,
@@ -326,73 +357,80 @@ m1
 m1_posterior <- as_draws_df(m1) 
 
 #The prior-posterior update plot for the intercept beta:
-plot1 <- ggplot(m1_posterior) +
+plot1_I <- ggplot(m1_posterior) +
 geom_histogram(aes(prior_Intercept), fill="darkblue", color="black",alpha=0.6, bins = 30) +
-geom_histogram(aes(b_v1_obs_matched), fill="darkgreen", color="black",alpha=0.6, bins = 30)+
+geom_histogram(aes(b_Intercept), fill="darkgreen", color="black",alpha=0.6, bins = 30)+
 xlab('Intercept') +
+labs(title="Intercept: Prior-posterior update check of the effect size") +
+theme_classic()
+
+plot1 <- ggplot(m1_posterior) +
+geom_histogram(aes(prior_b), fill="darkblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(b_Intercept), fill="darkgreen", color="black",alpha=0.6, bins = 30)+
+xlab('Beta') +
 labs(title="v1: Prior-posterior update check of the effect size") +
 theme_classic()
 
 plot2 <- ggplot(m1_posterior) +
-geom_histogram(aes(prior_Intercept), fill="darkblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(prior_b), fill="darkblue", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(b_v2_obs_matched), fill="darkgreen", color="black",alpha=0.6, bins = 30)+
-xlab('Intercept') +
+xlab('Beta') +
 labs(title="v2: Prior-posterior update check of the effect size") +
 theme_classic()
 
 plot3 <- ggplot(m1_posterior) +
-geom_histogram(aes(prior_Intercept), fill="darkblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(prior_b), fill="darkblue", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(b_v3_obs_matched), fill="darkgreen", color="black",alpha=0.6, bins = 30)+
-xlab('Intercept') +
+xlab('Beta') +
 labs(title="v3: Prior-posterior update check of the effect size") +
 theme_classic()
 
 plot4 <- ggplot(m1_posterior) +
-geom_histogram(aes(prior_Intercept), fill="darkblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(prior_b), fill="darkblue", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(b_v4_obs_matched), fill="darkgreen", color="black",alpha=0.6, bins = 30)+
-xlab('Intercept') +
+xlab('Beta') +
 labs(title="v4: Prior-posterior update check of the effect size") +
 theme_classic()
 
 plot5 <- ggplot(m1_posterior) +
-geom_histogram(aes(prior_Intercept), fill="darkblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(prior_b), fill="darkblue", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(b_v5_obs_matched), fill="darkgreen", color="black",alpha=0.6, bins = 30)+
-xlab('Intercept') +
+xlab('Beta') +
 labs(title="v5: Prior-posterior update check of the effect size") +
 theme_classic()
 
 plot6 <- ggplot(m1_posterior) +
-geom_histogram(aes(prior_Intercept), fill="darkblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(prior_b), fill="darkblue", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(b_v6_obs_matched), fill="darkgreen", color="black",alpha=0.6, bins = 30)+
-xlab('Intercept') +
+xlab('Beta') +
 labs(title="v6: Prior-posterior update check of the effect size") +
 theme_classic()
 
 plot7 <- ggplot(m1_posterior) +
-geom_histogram(aes(prior_Intercept), fill="darkblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(prior_b), fill="darkblue", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(b_v7_obs_matched), fill="darkgreen", color="black",alpha=0.6, bins = 30)+
-xlab('Intercept') +
+xlab('Beta') +
 labs(title="v7: Prior-posterior update check of the effect size") +
 theme_classic()
 
 plot8 <- ggplot(m1_posterior) +
-geom_histogram(aes(prior_Intercept), fill="darkblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(prior_b), fill="darkblue", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(b_v8_obs_matched), fill="darkgreen", color="black",alpha=0.6, bins = 30)+
-xlab('Intercept') +
+xlab('Beta') +
 labs(title="v_8 Prior-posterior update check of the effect size") +
 theme_classic()
 
 plot9 <- ggplot(m1_posterior) +
-geom_histogram(aes(prior_Intercept), fill="darkblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(prior_b), fill="darkblue", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(b_v9_obs_matched), fill="darkgreen", color="black",alpha=0.6, bins = 30)+
-xlab('Intercept') +
+xlab('Beta') +
 labs(title="v9: Prior-posterior update check of the effect size") +
 theme_classic()
 
 plot10 <- ggplot(m1_posterior) +
-geom_histogram(aes(prior_Intercept), fill="darkblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(prior_b), fill="darkblue", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(b_v10_obs_matched), fill="darkgreen", color="black",alpha=0.6, bins = 30)+
-xlab('Intercept') +
+xlab('Beta') +
 labs(title="v10: Prior-posterior update check of the effect size") +
 theme_classic()
 
@@ -401,9 +439,8 @@ theme_classic()
 
 ```{r}
 grid.arrange(plot1, plot2, plot3, plot4, plot5, plot6)
-grid.arrange(plot7, plot8, plot9, plot10)
+grid.arrange(plot7, plot8, plot9, plot10, plot1_I)
 
-#look at v_8 (noise variable) - do we revisit the priors when it's noise??
 ```
 
 
@@ -411,84 +448,93 @@ grid.arrange(plot7, plot8, plot9, plot10)
 
 ## Doing the same thing for the *noise* training data
 ```{r}
-m1_noise_train <- update(m1, newdata = train_noise)
-pp_check(m1_noise_train, ndraws=1000)
-print(m1_noise_train)
+m1_noise <- update(m1, newdata = train_noise)
+
+pp_check(m1_noise, ndraws=1000)
+m1_noise
 
 ```
 
 ```{r}
-m1_posterior_noise <- as_draws_df(m1_noise_train) 
+m1_posterior_noise <- as_draws_df(m1_noise) 
 
-#The prior-posterior update plot for the intercept beta:
+#The prior-posterior update plot for the betas:
 plot1_noise <- ggplot(m1_posterior_noise) +
-geom_histogram(aes(prior_Intercept), fill="purple", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(prior_b), fill="purple", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(b_v1_obs_matched), fill="green", color="black",alpha=0.6, bins = 30)+
-xlab('Intercept') +
+xlab('Beta') +
 labs(title="v1: Prior-posterior update check of the noise effect size") +
 theme_classic()
 
 plot2_noise <- ggplot(m1_posterior_noise) +
-geom_histogram(aes(prior_Intercept), fill="purple", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(prior_b), fill="purple", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(b_v2_obs_matched), fill="green", color="black",alpha=0.6, bins = 30)+
-xlab('Intercept') +
+xlab('Beta') +
 labs(title="v2: Prior-posterior update check of the noise effect size") +
 theme_classic()
 
 plot3_noise <- ggplot(m1_posterior_noise) +
-geom_histogram(aes(prior_Intercept), fill="purple", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(prior_b), fill="purple", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(b_v3_obs_matched), fill="green", color="black",alpha=0.6, bins = 30)+
-xlab('Intercept') +
+xlab('Beta') +
 labs(title="v3: Prior-posterior update check of the noise effect size") +
 theme_classic()
 
 plot4_noise <- ggplot(m1_posterior_noise) +
-geom_histogram(aes(prior_Intercept), fill="purple", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(prior_b), fill="purple", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(b_v4_obs_matched), fill="green", color="black",alpha=0.6, bins = 30)+
-xlab('Intercept') +
+xlab('Beta') +
 labs(title="v4: Prior-posterior update check of the noise effect size") +
 theme_classic()
 
 plot5_noise <- ggplot(m1_posterior_noise) +
-geom_histogram(aes(prior_Intercept), fill="purple", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(prior_b), fill="purple", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(b_v5_obs_matched), fill="green", color="black",alpha=0.6, bins = 30)+
-xlab('Intercept') +
+xlab('Beta') +
 labs(title="v5: Prior-posterior update check of the noise effect size") +
 theme_classic()
 
 plot6_noise <- ggplot(m1_posterior_noise) +
-geom_histogram(aes(prior_Intercept), fill="purple", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(prior_b), fill="purple", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(b_v6_obs_matched), fill="green", color="black",alpha=0.6, bins = 30)+
-xlab('Intercept') +
+xlab('Beta') +
 labs(title="v6: Prior-posterior update check of the noise effect size") +
 theme_classic()
 
 plot7_noise <- ggplot(m1_posterior_noise) +
-geom_histogram(aes(prior_Intercept), fill="purple", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(prior_b), fill="purple", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(b_v7_obs_matched), fill="green", color="black",alpha=0.6, bins = 30)+
-xlab('Intercept') +
+xlab('Beta') +
 labs(title="v7: Prior-posterior update check of the noise effect size") +
 theme_classic()
 
 plot8_noise <- ggplot(m1_posterior_noise) +
-geom_histogram(aes(prior_Intercept), fill="purple", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(prior_b), fill="purple", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(b_v8_obs_matched), fill="green", color="black",alpha=0.6, bins = 30)+
-xlab('Intercept') +
+xlab('Beta') +
 labs(title="v_8 Prior-posterior update check of the noise effect size") +
 theme_classic()
 
 plot9_noise <- ggplot(m1_posterior_noise) +
-geom_histogram(aes(prior_Intercept), fill="purple", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(prior_b), fill="purple", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(b_v9_obs_matched), fill="green", color="black",alpha=0.6, bins = 30)+
-xlab('Intercept') +
+xlab('Beta') +
 labs(title="v9: Prior-posterior update check of the noise effect size") +
 theme_classic()
 
 plot10_noise <- ggplot(m1_posterior_noise) +
-geom_histogram(aes(prior_Intercept), fill="purple", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(prior_b), fill="purple", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(b_v10_obs_matched), fill="green", color="black",alpha=0.6, bins = 30)+
-xlab('Intercept') + 
+xlab('Beta') + 
 labs(title="v10: Prior-posterior update check of the noise effect size") +
+theme_classic()
+
+#The prior-posterior update plot for the intercept:
+plot1_noise_I <- ggplot(m1_posterior_noise) +
+geom_histogram(aes(prior_Intercept), fill="purple", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(b_Intercept), fill="green", color="black",alpha=0.6, bins = 30)+
+xlab('Intercept') +
+labs(title="v1: Prior-posterior update check of the noise effect size") +
 theme_classic()
 
 ```
@@ -496,135 +542,223 @@ theme_classic()
 
 ```{r}
 grid.arrange(plot1_noise, plot2_noise, plot3_noise, plot4_noise, plot5_noise, plot6_noise)
-grid.arrange(plot7_noise, plot8_noise, plot9_noise, plot10_noise)
+grid.arrange(plot7_noise, plot8_noise, plot9_noise, plot10_noise, plot1_noise_I)
 ```
-
-
-*NB:*Do we redo our formula and/or our priors before checking the performance of it ????
-
 
 # Assessing performance on the informed data
 ```{r}
-
-#train_inf
-train_inf$av_pred_perc <- predict(m1)[,1] #new column with average predictions
-train_inf <- train_inf %>% mutate(av_pred =as.factor(ifelse(av_pred_perc > 0.5, "HC", "SZ")))
-
-train_inf$av_pred <- factor(train_inf$av_pred, levels=c('SZ', 'HC'))
-
-
-#train_noise
-train_noise$av_pred_perc <- predict(m1_noise_train)[,1] #new column with average predictions
-train_noise <- train_noise %>% mutate(av_pred =as.factor(ifelse(av_pred_perc > 0.5, "HC", "SZ")))
-
-train_noise$av_pred <- factor(train_noise$av_pred, levels=c('SZ', 'HC'))
-
-```
-
-```{r}
-#Train_inf performance
-yardstick::conf_mat(train_inf, 
-         truth = group,
-         estimate = av_pred,
-         dnn = c("Prediction", "Truth"))
-
-metrics(train_inf, 
-        truth = group, 
-        estimate = av_pred)
-
-
-#Train_noise performance
-yardstick::conf_mat(train_noise, 
-         truth = group,
-         estimate = av_pred,
-         dnn = c("Prediction", "Truth"))
-
-metrics(train_noise, 
-         truth = group, 
-        estimate = av_pred)
-
-
+# #train_inf
+# train_inf$pred_perc <- predict(m1)[,1] #one prediction per participant
+# train_inf <- train_inf %>% mutate(pred =as.factor(ifelse(pred_perc > 0.5, "HC", "SZ"))) #deciding if the prediction is HC/SZ
+# 
+# train_inf$pred <- factor(train_inf$pred, levels=c('SZ', 'HC'))
+# 
+# 
+# #train_noise
+# train_noise$pred_perc <- predict(m1_noise)[,1] #one prediction per participant
+# train_noise <- train_noise %>% mutate(pred =as.factor(ifelse(pred_perc > 0.5, "HC", "SZ")))#deciding if the prediction is HC/SZ
+# 
+# train_noise$pred <- factor(train_noise$pred, levels=c('SZ', 'HC'))
 
 ```
 
 ```{r}
+# #Train_inf performance
+# yardstick::conf_mat(train_inf, 
+#          truth = group,
+#          estimate = pred,
+#          dnn = c("Prediction", "Truth")) #Confusion matrix of how many participants were correctly guessed
+# 
+# metrics(train_inf, 
+#         truth = group, 
+#         estimate = pred) #.estimate is an average estimate of how well the model predicts
+# 
+# 
+# #Train_noise performance
+# yardstick::conf_mat(train_noise, 
+#          truth = group,
+#          estimate = av_pred,
+#          dnn = c("Prediction", "Truth")) #Confusion matrix of how many participants were correctly guessed
+# 
+# metrics(train_noise, 
+#          truth = group, 
+#         estimate = av_pred)#.estimate is an average estimate of how well the model predicts
+# 
 
-# Plotting uncertainty?
-u_train <- tibble(train_inf = predict(m1)[,2], train_noise = predict(m1_noise_train)[,2]  )  
 
-u_test <- tibble(test_inf = predict(m1, newdata = test_inf, allow_new_levels=T)[,2], test_noise = predict(m1_noise_train, newdata = test_noise, allow_new_levels=T)[,2])
-
-
-```
-
-```{r}
-devtools::install_github("clauswilke/ungeviz")
 ```
 
 
 
 
-# Now running the model on the test data - both informed and noise
+
+# Predictions on the test data - both informed and noise
+
 ```{r}
-#m1_inf_test <- update(m1, newdata = test_inf)
-#m1_noise_test <- update(m1, newdata = test_inf )
+# #inf
+# 
+# test_inf_s$av_pred_perc <- predict(m1,newdata = test_inf_s, allow_new_levels=T)[,1]
+# test_inf_s <- test_inf_s %>% mutate(av_pred =as.factor(ifelse(av_pred_perc > 0.5, "HC", "SZ")))
+# 
+# test_inf_s$av_pred <- factor(test_inf_s$av_pred, levels=c('SZ', 'HC'))
+# 
+# 
+# 
+# #noise
+# 
+# test_noise_s$av_pred_perc <- predict(m1, newdata = test_noise_s, allow_new_levels=T)[,1]
+# test_noise_s <- test_noise_s %>% mutate(av_pred =as.factor(ifelse(av_pred_perc > 0.5, "HC", "SZ")))
+# 
+# test_noise_s$av_pred <- factor(test_noise_s$av_pred, levels=c('SZ', 'HC'))
+# 
+# 
+# 
+# 
+# #test_inf
+# test_inf_s$pred_perc <- predict(m1)[,1] #one prediction per participant
+# train_inf <- train_inf %>% mutate(pred =as.factor(ifelse(pred_perc > 0.5, "HC", "SZ"))) #deciding if the prediction is HC/SZ
+# 
+# train_inf$pred <- factor(train_inf$pred, levels=c('SZ', 'HC'))
+# 
+# 
+# #test_noise
+# train_noise$pred_perc <- predict(m1_noise)[,1] #one prediction per participant
+# train_noise <- train_noise %>% mutate(pred =as.factor(ifelse(pred_perc > 0.5, "HC", "SZ")))#deciding if the prediction is HC/SZ
+# 
+# train_noise$pred <- factor(train_noise$pred, levels=c('SZ', 'HC'))
 ```
 
 
 ```{r}
-#inf
+# #Test_inf performance
+# yardstick::conf_mat(test_inf_s, 
+#          truth = group,
+#          estimate = av_pred,
+#          dnn = c("Prediction", "Truth"))
+# 
+# 
+# #Test_noise performance
+# yardstick::conf_mat(test_noise_s, 
+#          truth = group,
+#          estimate = av_pred,
+#          dnn = c("Prediction", "Truth"))
+# 
+# metrics(test_inf_s, 
+#          truth = group, 
+#         estimate = av_pred)
 
-test_inf$av_pred_perc <- predict(m1, newdata = test_inf, allow_new_levels=T)[,1]
-test_inf <- test_inf %>% mutate(av_pred =as.factor(ifelse(av_pred_perc > 0.5, "HC", "SZ")))
-
-test_inf$av_pred <- factor(test_inf$av_pred, levels=c('SZ', 'HC'))
+```
 
 
+
+#Predictions from every posterior sample
+```{r}
+perf_prob <-  tibble(expand.grid(
+  sample = seq(1000),
+  data = c("informed", "noise"),
+  type = c("training", "test"))
+)
+
+#informed
+train <- inv_logit_scaled(posterior_linpred(m1, summary = F))
+test <- inv_logit_scaled(posterior_linpred(m1, newdata = test_inf_s, summary = F, allow_new_levels = T))
 
 #noise
+train_n <- inv_logit_scaled(posterior_linpred(m1_noise, summary = F))
+test_n <- inv_logit_scaled(posterior_linpred(m1_noise, newdata = test_noise_s, summary = F, allow_new_levels = T))
 
-test_noise$av_pred_perc <- predict(m1, newdata = test_noise, allow_new_levels=T)[,1]
-test_noise <- test_noise %>% mutate(av_pred =as.factor(ifelse(av_pred_perc > 0.5, "HC", "SZ")))
+fun_if <- function(x) {ifelse(x > 0.5, "HC", "SZ")}
 
-test_noise$av_pred <- factor(test_noise$av_pred, levels=c('SZ', 'HC'))
+```
+
+```{r}
+
+
+train_inf_pred <- as_tibble(train)
+test_inf_s_pred <- as_tibble(test)
+train_noise_pred <- as_tibble(train_n)
+test_noise_s_pred <- as_tibble(test_n)
+ 
+train_inf_pred <- train_inf_pred %>% apply(2, fun_if) %>% as_tibble()
+test_inf_s_pred <- test_inf_s_pred %>% apply(2, fun_if) %>% as_tibble()
+train_noise_pred <- train_noise_pred %>% apply(2, fun_if) %>% as_tibble()
+test_noise_s_pred <- test_noise_s_pred %>% apply(2, fun_if) %>% as_tibble()
+
+train_inf_pred[sapply(train_inf_pred, is.character)] <- lapply(train_inf_pred[sapply(train_inf_pred, is.character)], as.factor)
+test_inf_s_pred[sapply(test_inf_s_pred, is.character)] <- lapply(test_inf_s_pred[sapply(test_inf_s_pred, is.character)], as.factor)
+train_noise_pred[sapply(train_noise_pred, is.character)] <- lapply(train_noise_pred[sapply(train_noise_pred, is.character)], as.factor)
+test_noise_s_pred[sapply(test_noise_s_pred, is.character)] <- lapply(test_noise_s_pred[sapply(test_noise_s_pred, is.character)], as.factor)
+
+for (i in seq(1000)) {
+  train_inf$pred <- c(train_inf_pred[i,])
+  train_inf <- unnest(train_inf, pred)
+  train_inf$pred <- factor(train_inf$pred, levels=c('SZ', 'HC'))
+  test_inf_s$pred <- c(test_inf_s_pred[i,])
+  test_inf_s <- unnest(test_inf_s, pred)
+  test_inf_s$pred <- factor(test_inf_s$pred, levels=c('SZ', 'HC'))
+  train_noise$pred <- c(train_noise_pred[i,])
+  train_noise <- unnest(train_noise, pred)
+  train_noise$pred <- factor(train_noise$pred, levels=c('SZ', 'HC'))
+  test_noise_s$pred <- c(test_noise_s_pred[i,])
+  test_noise_s <- unnest(test_noise_s, pred)
+  test_noise_s$pred <- factor(test_noise_s$pred, levels=c('SZ', 'HC'))
+
+  perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "informed" & perf_prob$type=="training"] <- accuracy(train_inf, truth = group, estimate = pred)[, ".estimate"]
+  perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "informed" & perf_prob$type=="test"] <- (accuracy(test_inf_s, truth = group, estimate = pred)[, ".estimate"])
+  perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "noise" & perf_prob$type=="training"] <- accuracy(train_noise, truth = group, estimate = pred)[, ".estimate"]
+  perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "noise" & perf_prob$type=="test"] <- (accuracy(test_noise_s, truth = group, estimate = pred)[, ".estimate"])
+}
+```
+
+# Plotting the predictions w. uncertainty
+```{r}
+perf_prob <- unnest(perf_prob, accuracy)
+
+ggplot(perf_prob, aes(y=as.numeric(accuracy) , x=type, color=type)) +
+  geom_point(data = perf_prob)+
+  scale_y_continuous() + 
+  facet_wrap(~ data)
+
+  
 ```
 
 
 ```{r}
-#Test_inf performance
-yardstick::conf_mat(test_inf, 
-         truth = group,
-         estimate = av_pred,
-         dnn = c("Prediction", "Truth"))
+brms::conditional_effects(m1)
 
-
-#Test_noise performance
-yardstick::conf_mat(test_noise, 
-         truth = group,
-         estimate = av_pred,
-         dnn = c("Prediction", "Truth"))
 ```
 
-#Check correlation between predictors - the frequentest way - w
-```{r}
-cor_dat <- matched_data %>%  select(starts_with("v"))
 
-corrrr <- correlations(cor_dat, use ="everything" , method = "pearson")
+These are just the average predictions. And our model shows us that it can find predictions on noise, which is problematic. . But this is without including uncertainty. 
+
+We need to generate predictions of every posterior samples of our model and plot the full distribution of the performance/accuracy. 
 
 
-corrplot(corrrr, method = "number")
-```
+#
+
+
+
+
 
 
 # Feature importance
+
+Plotting the posterior 
 ```{r}
-#Creating the engine
-pacman::p_load(randomForest, xgboost, kernlab)
+
+```
+
+```{r}
+train_trees <- train_inf %>% mutate(ID = NULL,
+                                    trial = NULL, 
+                                    av_pred = NULL, 
+                                    av_pred_perc = NULL, 
+                                    v3_obs_matched = NULL, 
+                                    predictions = NULL)
 
 
-train_trees <- train_inf %>% mutate(ID = NULL, trial = NULL, av_pred = NULL, av_pred_perc = NULL, v3_obs_matched = NULL)
 
-
+#SVM-engine
 informed_SVM <- svm_rbf()%>% 
   set_mode("classification") %>% 
   set_engine("kernlab") %>% 
@@ -638,16 +772,87 @@ am_i_important <- explain_tidymodels(informed_SVM,
                                      verbose = FALSE)
 
 
-am_i_important_imp <- model_parts(am_i_important) 
 
-plot(am_i_important_imp)
+#RandomForest-engine
+informed_trees <- rand_forest()%>% 
+  set_mode("classification") %>% 
+  set_engine("randomForest") %>% 
+  fit(group ~., data = train_trees)
+
+
+am_i_important_2 <- explain_tidymodels(informed_trees, 
+                                     data = train_inf, 
+                                     y= as.numeric(train_inf$group)-1,
+                                     label= "Random Forest", 
+                                     verbose = FALSE)
+
+
+am_i_important %>% model_parts() %>% plot() #SVM
+am_i_important_2 %>% model_parts() %>% plot() #RandomForest
+
+
 ```
 
+#Checking wheter the noise variables also show up as important predictors on the test data
+```{r}
+test_trees <- test_inf_s %>% mutate(ID = NULL, 
+                                    trial = NULL,
+                                    av_pred = NULL, 
+                                    av_pred_perc = NULL,
+                                    v3_obs_matched = NULL, 
+                                    predictions = NULL)
 
 
-## Part III - Applying the ML pipeline to empirical data
+#SVM-engine
+informed_SVM_test <- svm_rbf()%>% 
+  set_mode("classification") %>% 
+  set_engine("kernlab") %>% 
+  fit(group ~., data = test_trees)
+
+
+am_i_really_important <- explain_tidymodels(informed_SVM, 
+                                     data = test_inf_s, 
+                                     y= as.numeric(test_inf_s$group)-1,
+                                     label= "SVM", 
+                                     verbose = FALSE)
+
+
+
+#RandomForest-engine
+informed_trees_test <- rand_forest()%>% 
+  set_mode("classification") %>% 
+  set_engine("randomForest") %>% 
+  fit(group ~., data = test_trees)
+
+
+am_i_really_important_2 <- explain_tidymodels(informed_trees, 
+                                     data = test_inf_s, 
+                                     y= as.numeric(test_inf_s$group)-1,
+                                     label= "Random Forest", 
+                                     verbose = FALSE)
+
+
+am_i_really_important %>% model_parts() %>% plot() #SVM
+am_i_really_important_2 %>% model_parts() %>% plot() #RandomForest
+
+```
+
+^^ Global importance - generally, which are the features that matter the most?
+
+
+### Discuss why our noisy variables are "more" important and why we don't take them out
+
+
+
+
+
+
+
+Part III
 
 Download the empirical dataset from brightspace and apply your ML pipeline to the new data, adjusting where needed. *Warning*: in the simulated dataset we only had 10 features, now you have many more! Such is the life of the ML practitioner. Consider the impact a higher number of features will have on your ML inference, and decide whether you need to cut down the number of features before running the pipeline (or alternatively expand the pipeline to add feature selection).
+
+Data: https://www.dropbox.com/s/7ky1axvea33lgye/Ass3_empiricalData1.csv?dl=0
 
 ```{r}
 real_data <- read_csv("Ass3_empiricalData1.csv")
@@ -655,33 +860,52 @@ real_data <- read_csv("Ass3_empiricalData1.csv")
 
 ```{r}
 #removing non-acoustic features
-real_sub_data <- real_data %>%
-  mutate(
-    PatID = NULL,
+real_data <- real_data %>%
+  mutate(ID = PatID,
     NewID = NULL,
+    Trial = gsub("T", "", as.factor(Trial)),
     Language = NULL,
-    Trial = NULL,
     Corpus = NULL,
-    Gender = NULL,
-    Diagnosis = as.factor(Diagnosis)
+    Diagnosis = as.factor(Diagnosis), 
+    PatID=NULL
   )
-LogisticRegression <- logistic_reg() %>%
-  set_mode("classification") %>% 
-  set_engine("glm") %>%
-  fit(Diagnosis ~ . , data = real_sub_data)
 
-dd <- explain_tidymodels(LogisticRegression, 
-                                     data = real_sub_data, 
-                                     y= as.numeric(real_sub_data$group)-1,
-                                     label= "GLM", 
-                                     verbose = FALSE)
+```
+stratify
+cvms - balancing data, nice on continous variables
 
-dd <- model_parts(dd) 
+scale/standardize
 
-plot(dd)
 
-caret::findLinearCombos(real_sub_data)
+#Data budgetting
+```{r}
+train_real <- fold(
+  real_data,
+  k= 3,
+  cat_col = "Diagnosis",
+  cat_col = "Gender",
+  id_col = "ID",
+  parallel = F
+  
+)
 ```
 
 
-Data: https://www.dropbox.com/s/7ky1axvea33lgye/Ass3_empiricalData1.csv?dl=0
+```{r}
+LogisticRegression <- logistic_reg() %>%
+  set_mode("classification") %>% 
+  set_engine("glm") %>%
+  fit(Diagnosis ~., data = real_data)
+
+dd <- explain_tidymodels(LogisticRegression, 
+                                     data = real_data, 
+                                     y= as.numeric(real_data$Diagnosis)-1,
+                                     label= "GLM", 
+                                     verbose = FALSE)
+dd <- model_parts(dd) 
+plot(dd)
+caret::findLinearCombos(real_data)
+```
+
+
+
