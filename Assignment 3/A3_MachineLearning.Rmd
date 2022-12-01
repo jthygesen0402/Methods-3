@@ -22,7 +22,7 @@ The report for the exam, thus, consists of the answer to all the following promp
 Remember: plots are very very important to communicate your process and results.
 
 ```{r}
-pacman::p_load(tidyverse,purrr, brms, cmdstanr, bayesplot, rstanarm, viridis, gridExtra, RColorBrewer, reshape2, tidymodels, yardstick, corrplot, DALEX, DALEXtra, randomForest, xgboost, kernlab, caret, cvms, groupdata2, DataExplorer, klaR)
+pacman::p_load(tidyverse,purrr, brms, cmdstanr, bayesplot, rstanarm, viridis, gridExtra, RColorBrewer, reshape2, tidymodels, yardstick, corrplot, DALEX, DALEXtra, randomForest, xgboost, kernlab, caret, cvms, groupdata2, DataExplorer, klaR, mlbench)
 
 
 set.seed(3)
@@ -118,7 +118,7 @@ sim_d <- merge(sim_d, pairs)
 matched_data <- sim_d %>% 
   rowwise %>%  
   mutate(across(ends_with("_obs"), ~if_else(group == "SZ", (.x/2), -(.x/2)), .names ="{.col}_matched")) %>%
-  select(ID, trial, group, ends_with("_matched"))
+  dplyr::select(ID, trial, group, ends_with("_matched"))
 
 ```
 
@@ -153,7 +153,7 @@ sim_d_noise <- merge(sim_d_noise, pairs)
 matched_noise<- sim_d_noise %>% 
   rowwise %>%  
   mutate(across(ends_with("_obs"), ~if_else(group == "SZ", (.x/2), -(.x/2)), .names ="{.col}_matched")) %>%
-  select(ID, trial, group, ends_with("_matched"))
+  dplyr::select(ID, trial, group, ends_with("_matched"))
 
 ```
 
@@ -543,10 +543,10 @@ theme_classic()
 grid.arrange(plot1_noise, plot2_noise, plot3_noise, plot4_noise, plot5_noise, plot6_noise)
 grid.arrange(plot7_noise, plot8_noise, plot9_noise, plot10_noise, plot1_noise_I)
 ```
-```
+
 
 #Predictions from every posterior sample
-```{r}
+``` {r}
 perf_prob <-  tibble(expand.grid(
   sample = seq(1000),
   data = c("informed", "noise"),
@@ -613,11 +613,6 @@ ggplot(perf_prob, aes(y=as.numeric(accuracy) , x=type, color=type)) +
   facet_wrap(~ data)
 
   
-```
-
-
-```{r}
-
 ```
 
 # Feature importance
@@ -813,6 +808,22 @@ rfe_1 <- rfe(x = x_train,
 ```
 
 
+```{r}
+# define the control using a random forest selection function
+control <- rfeControl(functions=rfFuncs, method="cv", number=10)
+# run the RFE algorithm
+results <- rfe(train_real[-which(names(train_real) == "Diagnosis")], train_real["Diagnosis"], sizes=c(1:8), rfeControl=control)
+# summarize the results
+print(results)
+# list the chosen features
+predictors(results)
+# plot the results
+plot(results, type=c("g", "o"))
+
+train_real[-which(names(train_real) == "Diagnosis")]
+```
+
+
 #
 ```{r}
 
@@ -849,7 +860,7 @@ pca_train_2 %>%
 LogisticRegression <- logistic_reg() %>%
   set_mode("classification") %>% 
   set_engine("glm") %>%
-  fit(Diagnosis ~ . , data = real_sub_data)
+  fit(Diagnosis ~ . , data = train_real)
 dd <- explain_tidymodels(LogisticRegression, 
                                      data = real_sub_data, 
                                      y= as.numeric(real_sub_data$group)-1,
@@ -859,6 +870,26 @@ dd <- model_parts(dd)
 plot(dd)
 caret::findLinearCombos(real_sub_data)
 ```
+
+```{r}
+#SVM-engine
+informed_SVM <- svm_rbf()%>% 
+  set_mode("classification") %>% 
+  set_engine("kernlab") %>% 
+  fit(Diagnosis ~., data = train_real)
+
+
+am_i_important <- explain_tidymodels(informed_SVM, 
+                                     data = train_real, 
+                                     y= as.numeric(train_real$Diagnosis)-1,
+                                     label= "SVM", 
+                                     verbose = FALSE)
+
+am_i_important %>% model_parts() %>% plot() #SVM
+
+
+```
+
 
 
 
