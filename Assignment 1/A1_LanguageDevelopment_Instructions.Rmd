@@ -210,6 +210,7 @@ MLU_2 <- brm(
   f1,
   data =df,
   family = lognormal,
+  prior = MLU_priors,
     sample_prior = TRUE,
    chains = 2,
   cores = 2,
@@ -289,7 +290,7 @@ n_sim <- 20
 ```
 
 ```{r}
-#List of wanted samplesizes
+#List of wanted sample sizes
 samples_sizes <- c(30,40,50,60,70,80,90,100)
 
 
@@ -304,7 +305,7 @@ est_ <- unnest(parameters, estimate)
 
 ```{r}
 #Getting the estimate differences between the two groups
-est_$es_diff <- est_$`b_diagnosisASD:visit` - est_$`b_diagnosisTD:visit`
+est_$es_diff <- est_$`b_diagnosisTD:visit`-est_$`b_diagnosisASD:visit`
 
 tt <- est_ %>% group_by(seed) %>% dplyr::summarise(mean=mean(es_diff), 
                                             Q3_u = CI(es_diff)[1], #CI syntax begins with the upper quantile
@@ -323,7 +324,7 @@ para <- samples %>% mutate(estimate = map(fit, ~ as_draws_df(.)))
 
 no_nest <- unnest(para, estimate)
 
-no_nest$est_diff <- no_nest$`b_diagnosisASD:visit` - no_nest$`b_diagnosisTD:visit`
+no_nest$est_diff <- no_nest$`b_diagnosisTD:visit`-no_nest$`b_diagnosisASD:visit`
 
 q_estimates <- no_nest %>% 
   group_by(seed) %>% 
@@ -353,7 +354,7 @@ all_samples <- tibble(samplesizes=samples) %>% mutate(m=map(samplesizes, power))
 plot <- list(NA)
 
 t <-  all_samples %>%  
-    filter(samplessizes == 30)
+    filter(samplesizes == 30)
 ```
 
 
