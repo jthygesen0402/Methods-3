@@ -22,7 +22,7 @@ The report for the exam, thus, consists of the answer to all the following promp
 Remember: plots are very very important to communicate your process and results.
 
 ```{r}
-pacman::p_load(tidyverse,purrr, brms, cmdstanr, bayesplot, rstanarm, viridis, gridExtra, RColorBrewer, reshape2, tidymodels, yardstick, corrplot, DALEX, DALEXtra, randomForest, xgboost, kernlab, caret, cvms, groupdata2, DataExplorer, klaR, dplyr, mlbench)
+pacman::p_load(tidyverse,purrr, brms, cmdstanr, bayesplot, rstanarm, viridis, gridExtra, RColorBrewer, reshape2, tidymodels, yardstick, corrplot, DALEX, DALEXtra, randomForest, xgboost, kernlab, caret, cvms, groupdata2, DataExplorer, klaR, mlbench)
 
 
 set.seed(3)
@@ -33,6 +33,16 @@ set.seed(3)
 color_scheme_set(scheme = "teal")
 ```
 
+______________________________
+
+*update_role* 
+- assign the role of the column 
+update_role(ID, trail, new_role ="second level")
+
+Useful in PCA and when making our recipe
+
+
+__________________________________
 
 
 
@@ -229,10 +239,6 @@ test_inf_s<- bake(recipe_inf, new_data = test_inf)
 test_inf_s$ID <- test_inf$ID
 
 ```
-
-
-#Choosing a classification algorithm - Logistic Regression
-
 ## Data budgetting and preprocessing on the *noise* data set
 
 ```{r}
@@ -526,7 +532,7 @@ plot1_noise_I <- ggplot(m1_posterior_noise) +
 geom_histogram(aes(prior_Intercept), fill="purple", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(b_Intercept), fill="green", color="black",alpha=0.6, bins = 30)+
 xlab('Intercept') +
-labs(title="v1: Prior-posterior update check on the intercept of the noise effect size") +
+labs(title="v1: Prior-posterior update check of the noise effect size") +
 theme_classic()
 
 ```
@@ -535,143 +541,12 @@ theme_classic()
 ```{r}
 grid.arrange(plot1_noise, plot2_noise, plot3_noise, plot4_noise, plot5_noise, plot6_noise)
 grid.arrange(plot7_noise, plot8_noise, plot9_noise, plot10_noise, plot1_noise_I)
-```
-
-#Plottig conditional effects
-```{r}
-brms::conditional_effects(m1)
-brms::conditional_effects(m1_noise)
-```
-
-
-
-
-# Assessing performance on the informed data
-```{r}
-# #train_inf
-# train_inf$pred_perc <- predict(m1)[,1] #one prediction per participant
-# train_inf <- train_inf %>% mutate(pred =as.factor(ifelse(pred_perc > 0.5, "HC", "SZ"))) #deciding if the prediction is HC/SZ
-# 
-# train_inf$pred <- factor(train_inf$pred, levels=c('SZ', 'HC'))
-# 
-# 
-# #train_noise
-# train_noise$pred_perc <- predict(m1_noise)[,1] #one prediction per participant
-# train_noise <- train_noise %>% mutate(pred =as.factor(ifelse(pred_perc > 0.5, "HC", "SZ")))#deciding if the prediction is HC/SZ
-# 
-# train_noise$pred <- factor(train_noise$pred, levels=c('SZ', 'HC'))
-
-```
-
-```{r}
-# #Train_inf performance
-# yardstick::conf_mat(train_inf, 
-#          truth = group,
-#          estimate = pred,
-#          dnn = c("Prediction", "Truth")) #Confusion matrix of how many participants were correctly guessed
-# 
-# metrics(train_inf, 
-#         truth = group, 
-#         estimate = pred) #.estimate is an average estimate of how well the model predicts
-# 
-# 
-# #Train_noise performance
-# yardstick::conf_mat(train_noise, 
-#          truth = group,
-#          estimate = av_pred,
-#          dnn = c("Prediction", "Truth")) #Confusion matrix of how many participants were correctly guessed
-# 
-# metrics(train_noise, 
-#          truth = group, 
-#         estimate = av_pred)#.estimate is an average estimate of how well the model predicts
-# 
-
-
-```
-
-
-
-
-
-# Predictions on the test data - both informed and noise
-
-```{r}
-
-#inf
-
-test_inf_s$av_pred_perc <- predict(m1,newdata = test_inf_s, allow_new_levels=T)[,1]
-test_inf_s <- test_inf_s %>% mutate(av_pred =as.factor(ifelse(av_pred_perc > 0.5, "HC", "SZ")))
-
-test_inf_s$av_pred <- factor(test_inf_s$av_pred, levels=c('SZ', 'HC'))
-
-
-
-#noise
-
-test_noise_s$av_pred_perc <- predict(m1_noise, newdata = test_noise_s, allow_new_levels=T)[,1]
-test_noise_s <- test_noise_s %>% mutate(av_pred =as.factor(ifelse(av_pred_perc > 0.5, "HC", "SZ")))
-
-test_noise_s$av_pred <- factor(test_noise_s$av_pred, levels=c('SZ', 'HC'))
-
-# #inf
-# 
-# test_inf_s$av_pred_perc <- predict(m1,newdata = test_inf_s, allow_new_levels=T)[,1]
-# test_inf_s <- test_inf_s %>% mutate(av_pred =as.factor(ifelse(av_pred_perc > 0.5, "HC", "SZ")))
-# 
-# test_inf_s$av_pred <- factor(test_inf_s$av_pred, levels=c('SZ', 'HC'))
-# 
-# 
-# 
-# #noise
-# 
-# test_noise_s$av_pred_perc <- predict(m1, newdata = test_noise_s, allow_new_levels=T)[,1]
-# test_noise_s <- test_noise_s %>% mutate(av_pred =as.factor(ifelse(av_pred_perc > 0.5, "HC", "SZ")))
-# 
-# test_noise_s$av_pred <- factor(test_noise_s$av_pred, levels=c('SZ', 'HC'))
-# 
-# 
-# 
-# 
-# #test_inf
-# test_inf_s$pred_perc <- predict(m1)[,1] #one prediction per participant
-# train_inf <- train_inf %>% mutate(pred =as.factor(ifelse(pred_perc > 0.5, "HC", "SZ"))) #deciding if the prediction is HC/SZ
-# 
-# train_inf$pred <- factor(train_inf$pred, levels=c('SZ', 'HC'))
-# 
-# 
-# #test_noise
-# train_noise$pred_perc <- predict(m1_noise)[,1] #one prediction per participant
-# train_noise <- train_noise %>% mutate(pred =as.factor(ifelse(pred_perc > 0.5, "HC", "SZ")))#deciding if the prediction is HC/SZ
-# 
-# train_noise$pred <- factor(train_noise$pred, levels=c('SZ', 'HC'))
-
-```
-
-
-```{r}
-# #Test_inf performance
-# yardstick::conf_mat(test_inf_s, 
-#          truth = group,
-#          estimate = av_pred,
-#          dnn = c("Prediction", "Truth"))
-# 
-# 
-# #Test_noise performance
-# yardstick::conf_mat(test_noise_s, 
-#          truth = group,
-#          estimate = av_pred,
-#          dnn = c("Prediction", "Truth"))
-# 
-# metrics(test_inf_s, 
-#          truth = group, 
-#         estimate = av_pred)
-
-```
+``
 
 
 
 #Predictions from every posterior sample
-```{r}
+``` {r}
 perf_prob <-  tibble(expand.grid(
   sample = seq(1000),
   data = c("informed", "noise"),
@@ -756,11 +631,7 @@ ggplot(perf_prob, aes(y=as.numeric(accuracy) , x=type, color=type)) +
   geom_point(data = perf_prob)+
   scale_y_continuous() + 
   facet_wrap(~ data)
-
-  
 ```
-
-
 
 # Feature importance
 
@@ -855,8 +726,6 @@ am_i_really_important_2 %>% model_parts() %>% plot() #RandomForest
 ```
 
 
-
-
 Part III
 
 Download the empirical dataset from brightspace and apply your ML pipeline to the new data, adjusting where needed. *Warning*: in the simulated dataset we only had 10 features, now you have many more! Such is the life of the ML practitioner. Consider the impact a higher number of features will have on your ML inference, and decide whether you need to cut down the number of features before running the pipeline (or alternatively expand the pipeline to add feature selection).
@@ -885,6 +754,7 @@ real_data <- real_data %>%
 
 #Data budgetting
 ```{r}
+
 partition <- partition(
   real_data, 
   p = 0.8, 
@@ -934,7 +804,6 @@ plot_correlation(t)
 ```
 
 
-#PCA - feature selcetion inception
 ```{r}
 
 pca_train_ <-  recipe(Diagnosis ~., data = t) %>% 
@@ -965,7 +834,41 @@ t_new <- t[,!(names(t) %in% terms)]
 
 t_new$.partitions <- NULL
 
+```{r}
+LogisticRegression <- logistic_reg() %>%
+  set_mode("classification") %>% 
+  set_engine("glm") %>%
+  fit(Diagnosis ~ . , data = train_real)
+dd <- explain_tidymodels(LogisticRegression, 
+                                     data = real_sub_data, 
+                                     y= as.numeric(real_sub_data$group)-1,
+                                     label= "GLM", 
+                                     verbose = FALSE)
+dd <- model_parts(dd) 
+plot(dd)
+caret::findLinearCombos(real_sub_data)
+
 ```
+
+```{r}
+#SVM-engine
+informed_SVM <- svm_rbf()%>% 
+  set_mode("classification") %>% 
+  set_engine("kernlab") %>% 
+  fit(Diagnosis ~., data = train_real)
+
+
+am_i_important <- explain_tidymodels(informed_SVM, 
+                                     data = train_real, 
+                                     y= as.numeric(train_real$Diagnosis)-1,
+                                     label= "SVM", 
+                                     verbose = FALSE)
+
+am_i_important %>% model_parts() %>% plot() #SVM
+
+
+```
+
 
 
 ```{r}
