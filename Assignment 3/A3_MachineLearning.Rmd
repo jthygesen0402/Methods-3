@@ -561,7 +561,7 @@ test <- inv_logit_scaled(posterior_linpred(m1, newdata = test_inf_s, summary = F
 train_n <- inv_logit_scaled(posterior_linpred(m1_noise, summary = F))
 test_n <- inv_logit_scaled(posterior_linpred(m1_noise, newdata = test_noise_s, summary = F, allow_new_levels = T))
 
-fun_if <- function(x) {ifelse(x > 0.5, "HC", "SZ")}
+fun_if <- function(x) {ifelse(x > 0.5, "SZ", "HC")}
 
 ```
 
@@ -804,13 +804,13 @@ plot(importance)
 ```
 
 ```{r}
-relevant_cols <- t %>% dplyr::select(Harmonicity_SD, HMPDD0_SD, Clarity_Mean, MCEP2_Mean, CreakProbability_SD, F0_SD_Praat, Pitch_IQR, MCEP23_Mean, MCEP8_Median, Intensity_SD_Praat)
+relevant_cols <- t %>% dplyr::select(Harmonicity_SD, MCEP2_Mean,Clarity_Mean, HMPDD0_SD, MCEP11_Median,  MCEP8_Mean, CreakProbability_SD, F0_SD_Praat, Pitch_IQR, TurnNumMin_Cova)
 
 train_select <- cbind(train_factor, relevant_cols)
 ```
 
 ```{r}
-f1_real <- bf(Diagnosis ~ 1 + Harmonicity_SD+ HMPDD0_SD+ Clarity_Mean+ MCEP2_Mean+ CreakProbability_SD+ F0_SD_Praat+ Pitch_IQR+ MCEP23_Mean+ MCEP8_Median+ Intensity_SD_Praat + (1+Trial|NewID))
+f1_real <- bf(Diagnosis ~ 1 + Harmonicity_SD+ MCEP2_Mean+Clarity_Mean+ HMPDD0_SD+ MCEP11_Median+  MCEP8_Mean+ CreakProbability_SD+ F0_SD_Praat+ Pitch_IQR+ TurnNumMin_Cova + (1+Trial|NewID))
 ```
 
 
@@ -887,9 +887,14 @@ perf_prob <-  tibble(expand.grid(
 train_r <- inv_logit_scaled(posterior_linpred(m1_real, summary = F))
 test_r <- inv_logit_scaled(posterior_linpred(m1_real, newdata = test_real, summary = F, allow_new_levels = T))
 
-fun_if <- function(x) {ifelse(x > 0.5, "HC", "SCZ")}
+fun_if <- function(x) {ifelse(x > 0.5, "SCZ", "CT")}
 
 ```
+
+```{r}
+train_select$av_pred <- predict(m1_real)
+```
+
 
 ```{r}
 train_r <- as_tibble(train_r)
@@ -904,10 +909,10 @@ test_r[sapply(test_r, is.character)] <- lapply(test_r[sapply(test_r, is.characte
 for (i in seq(1000)) {
   train_select$pred <- c(train_r[i,])
   train_select <- unnest(train_select, pred)
-  train_select$pred <- factor(train_select$pred, levels=c('SCZ', 'HC'))
+  train_select$pred <- factor(train_select$pred, levels=c('CT', 'SCZ'))
   test_real$pred <- c(test_r[i,])
   test_real <- unnest(test_real, pred)
-  test_real$pred <- factor(test_real$pred, levels=c('SCZ', 'HC'))
+  test_real$pred <- factor(test_real$pred, levels=c('CT', 'SCZ'))
 
   perf_prob$accuracy[perf_prob$sample==i & perf_prob$type=="training"] <- accuracy(train_select, truth = Diagnosis, estimate = pred)[, ".estimate"]
   perf_prob$accuracy[perf_prob$sample==i &  perf_prob$type=="test"] <- (accuracy(test_real, truth = Diagnosis, estimate = pred)[, ".estimate"])
@@ -925,12 +930,10 @@ perf_prob <- unnest(perf_prob, c(accuracy,kap))
 
 ggplot(perf_prob, aes(y=as.numeric(accuracy) , x=type, color=type)) +
   geom_point(data = perf_prob)+
-  scale_y_continuous() + 
-  facet_wrap(~ data)
+  scale_y_continuous()
 
 ggplot(perf_prob, aes(y=as.numeric(kap) , x=type, color=type)) +
   geom_point(data = perf_prob)+
-  scale_y_continuous() + 
-  facet_wrap(~ data)
+  scale_y_continuous() 
 ```
 
