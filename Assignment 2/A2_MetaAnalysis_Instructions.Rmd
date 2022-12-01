@@ -436,6 +436,7 @@ print(m1_real)
 
 pp_check(m1_real, ndraws = 1000)
 ```
+
 ```{r}
 # Plotting the prior-posterior update checks for the real data
 

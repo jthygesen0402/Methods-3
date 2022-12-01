@@ -631,8 +631,6 @@ ggplot(perf_prob, aes(y=as.numeric(accuracy) , x=type, color=type)) +
   geom_point(data = perf_prob)+
   scale_y_continuous() + 
   facet_wrap(~ data)
-
-  
 ```
 
 # Feature importance

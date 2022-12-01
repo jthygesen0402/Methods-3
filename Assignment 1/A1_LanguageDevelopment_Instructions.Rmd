@@ -173,11 +173,11 @@ get_prior(data = df,
 ```
 
 ```{r}
-#Defining the priors - we expect the ASD children to vary more than the TD-children
+#Defining the priors - we set weakly informed priors i.e. that there is no difference in development between the two groups (we want the data to persuade us that there is a difference)
 MLU_priors <- c(
-  brms::prior(normal(0,0.2), class = b),
-  brms::prior(normal(0.4,0.10), class = b, coef = "diagnosisASD"),
-  brms::prior(normal(0.4,0.05), class = b, coef = "diagnosisTD"),
+  brms::prior(normal(0.4,0.2), class = b),
+  brms::prior(normal(0.0,0.20), class = b, coef = "diagnosisASD"),
+  brms::prior(normal(0.0,0.20), class = b, coef = "diagnosisTD"),
   brms::prior(normal(0,0.5), class = sd, coef = "Intercept", group = ID),
   brms::prior(normal(0,0.2), class = sd, coef = "visit", group = ID),
   brms::prior(lkj(1),class="cor"))
@@ -203,14 +203,15 @@ pp_check(MLU_prior_model, ndraws =100) + xlim(c(-1,100))
 ```
 
 
-
+ 
 ```{r}
-#Fitting the model
+#Fitting the model 
 MLU_2 <- brm(
   f1,
   data =df,
-  family = lognormal, #our prior predictive gets wickedly high values
-    sample_prior = T,
+  family = lognormal,
+  prior = MLU_priors,
+    sample_prior = TRUE,
    chains = 2,
   cores = 2,
   control = list(
@@ -233,43 +234,44 @@ Plotting the prior-posterior update checks
 #Sample the parameters of interest:
 Posterior_m1 <- as_draws_df(MLU_2)
 
+
 #The prior-posterior update plot for the intercept beta:
 p1 <- ggplot(Posterior_m1) +
-geom_histogram(aes(prior_b_diagnosisASD), fill="steelblue", color="black",alpha=0.6, bins = 30) +
-geom_histogram(aes(b_diagnosisASD), fill="#FC4E07", color="black",alpha=0.6, bins = 30) +
-geom_histogram(aes(b_diagnosisTD), fill = "green", color = "black", alpha=0.6, bins = 30)+
-xlab('Intercept') +
-labs(title="Prior-posterior update check of the intercepts") +
-theme_classic()
+  geom_histogram(aes(prior_b_diagnosisASD), fill="steelblue", color="black",alpha=0.6, bins = 30) +
+  geom_histogram(aes(b_diagnosisASD), fill="#FC4E07", color="black",alpha=0.6, bins = 30) +
+  geom_histogram(aes(b_diagnosisTD), fill = "green", color = "black", alpha=0.6, bins = 30)+
+  xlab('Intercept') +
+  labs(title="Prior-posterior update check of the intercepts") +
+  theme_classic()
 
 p2 <- ggplot(Posterior_m1) +
-geom_histogram(aes(prior_sd_ID__Intercept), fill="steelblue", color="black",alpha=0.6, bins = 30) +
-geom_histogram(aes(sd_ID__Intercept), fill="#FC4E07", color="black",alpha=0.6, bins = 30) +
-xlab('Intercept') +
-labs(title="Prior-posterior update check variability of the intercept") +
-theme_classic()
+  geom_histogram(aes(prior_sd_ID__Intercept), fill="steelblue", color="black",alpha=0.6, bins = 30) +
+  geom_histogram(aes(sd_ID__Intercept), fill="#FC4E07", color="black",alpha=0.6, bins = 30) +
+  xlab('Intercept') +
+  labs(title="Prior-posterior update check variability of the intercept") +
+  theme_classic()
 
 p3 <- ggplot(Posterior_m1) +
-geom_histogram(aes(`prior_b_diagnosisASD:visit`), fill="steelblue", color="black",alpha=0.6, bins = 30) +
-geom_histogram(aes(`b_diagnosisASD:visit`), fill="#FC4E07", color="black",alpha=0.6, bins = 30) +
-geom_histogram(aes(`b_diagnosisTD:visit`), fill = "green", color = "black", alpha=0.6, bins = 30)+
-xlab('Slope') +
-labs(title="Prior-posterior update check of the slopes by visit") +
-theme_classic()
+  geom_histogram(aes(`prior_b_diagnosisASD:visit`), fill="steelblue", color="black",alpha=0.6, bins = 30) +
+  geom_histogram(aes(`b_diagnosisASD:visit`), fill="#FC4E07", color="black",alpha=0.6, bins = 30) +
+  geom_histogram(aes(`b_diagnosisTD:visit`), fill = "green", color = "black", alpha=0.6, bins = 30)+
+  xlab('Slope') +
+  labs(title="Prior-posterior update check of the slopes by visit") +
+  theme_classic()
 
 p4 <- ggplot(Posterior_m1) +
-geom_histogram(aes(prior_sd_ID__visit), fill="steelblue", color="black",alpha=0.6, bins = 30) +
-geom_histogram(aes(sd_ID__visit), fill="#FC4E07", color="black",alpha=0.6, bins = 30) +
-xlab('Slope') +
-labs(title="Prior-posterior update check variability of the slopes") +
-theme_classic()
+  geom_histogram(aes(prior_sd_ID__visit), fill="steelblue", color="black",alpha=0.6, bins = 30) +
+  geom_histogram(aes(sd_ID__visit), fill="#FC4E07", color="black",alpha=0.6, bins = 30) +
+  xlab('Slope') +
+  labs(title="Prior-posterior update check variability of the slopes") +
+  theme_classic()
 
 p5 <- ggplot(Posterior_m1) +
-geom_histogram(aes(prior_cor_ID), fill="steelblue", color="black",alpha=0.6, bins = 30) +
-geom_histogram(aes(cor_ID__Intercept__visit), fill="#FC4E07", color="black",alpha=0.6, bins = 30) +
-xlab('Correlation') +
-labs(title="Prior-posterior update check on the correlation") +
-theme_classic()
+  geom_histogram(aes(prior_cor_ID), fill="steelblue", color="black",alpha=0.6, bins = 30) +
+  geom_histogram(aes(cor_ID__Intercept__visit), fill="#FC4E07", color="black",alpha=0.6, bins = 30) +
+  xlab('Correlation') +
+  labs(title="Prior-posterior update check on the correlation") +
+  theme_classic()
 
 grid.arrange(p1,p2,p3,p4,p5)
 ```
@@ -288,8 +290,9 @@ n_sim <- 20
 ```
 
 ```{r}
-#List of wanted samplesizes
+#List of wanted sample sizes
 samples_sizes <- c(30,40,50,60,70,80,90,100)
+
 
 sample60 <- tibble(seed = 1:n_sim) %>%
   mutate(d = map(seed, simulation, n=60)) %>% mutate(fit = map2(d, seed, ~update(MLU_2, newdata = .x, seed = .y, iter=10)))
@@ -302,7 +305,7 @@ est_ <- unnest(parameters, estimate)
 
 ```{r}
 #Getting the estimate differences between the two groups
-est_$es_diff <- est_$`b_diagnosisASD:visit` - est_$`b_diagnosisTD:visit`
+est_$es_diff <- est_$`b_diagnosisTD:visit`-est_$`b_diagnosisASD:visit`
 
 tt <- est_ %>% group_by(seed) %>% dplyr::summarise(mean=mean(es_diff), 
                                             Q3_u = CI(es_diff)[1], #CI syntax begins with the upper quantile
@@ -321,7 +324,7 @@ para <- samples %>% mutate(estimate = map(fit, ~ as_draws_df(.)))
 
 no_nest <- unnest(para, estimate)
 
-no_nest$est_diff <- no_nest$`b_diagnosisASD:visit` - no_nest$`b_diagnosisTD:visit`
+no_nest$est_diff <- no_nest$`b_diagnosisTD:visit`-no_nest$`b_diagnosisASD:visit`
 
 q_estimates <- no_nest %>% 
   group_by(seed) %>% 
@@ -339,7 +342,6 @@ return(q_estimates)
 all_samples <- tibble(samplesizes=samples) %>% mutate(m=map(samplesizes, power)) %>% unnest(m)
 ```
 
-
 ```{r}
 #plotting all the sample sizes together
 pp_plots <- all_samples %>%  
@@ -350,6 +352,8 @@ pp_plots <- all_samples %>%
   labs(x = "seed",
       y = expression(beta[1])) + 
     ggtitle("Differences between ASD and TD across different sample sizes")
+  
+pp_plots  
 
   
 pp_plots
@@ -357,48 +361,14 @@ pp_plots
     
 ```
 
-
-
 ```{r}
-#plotting the differences
-plot <- list(NA)
-
-t <-  all_samples %>%  
-    filter(samplessizes == 30)
-```
+all_samples <- all_samples %>% 
+  mutate(check = ifelse(Q1_l >0,1,0), samplesizes = as.factor(samplesizes))
 
 
-```{r}
+all_samples %>% group_by(samplesizes) %>% 
+  dplyr::summarise(power=mean(check))
 
-
-for (i in length(samples_sizes)){
-  
-    variable <-  all_samples %>%  
-    filter(samplesizes == samples_sizes[i]) %>% 
-    ggplot(aes(x = seed, y = mean, ymin = Q3_u   , ymax = Q1_l)) +
-    geom_hline(yintercept = c(0, .5), color = "pink") +
-    geom_pointrange(fatten = 1/2) +
-    labs(x = "seed",
-       y = expression(beta[1]))
-   
-    plots_var
-  
-}
-
-<<<<<<< HEAD
-
-=======
-facetw
->>>>>>> 59fe6b2bb2abb686e5ec2043e7ffa1f57b7100f1
-
-
-```
-
-
-```{r}
-tt %>% 
-  mutate(check = ifelse(Q1_l > 0, 1, 0)) %>% 
-  summarise(power = mean(check))
 ```
 
 
@@ -578,4 +548,3 @@ Relying on the model(s) you trained in part 2 of the exercise, create prediction
 
 
 ```
-
