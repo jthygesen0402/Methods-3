@@ -58,10 +58,10 @@ people <- 200
 trials <- 10
 
 EffectsMeans_inform <- c(0.25,-0.55,-0.75,-1.26,0.05,1.89,0,0,0,0)
-EffectsSD_inform <- c(0.5, 0.29, 0.39,0.63,0.59,0.62,1,1,1,1)
+EffectsSD_inform <- c(0.5, 0.29, 0.39,0.63,0.59,0.62,0.2,0.2,0.2,0.2)
 
 EffectsMeans_noise <- rep(0,10)
-EffectsSD_noise <- rep(1,10)
+EffectsSD_noise <- rep(0.2,10)
 
 TrialSD <- 0.5
 Error <- 0.2
@@ -324,7 +324,7 @@ m1_prior
 
 
 # Running Prior predictive check
-pp_check(m1_prior, ndraws =1000)
+#pp_check(m1_prior, ndraws =1000)
 ```
 
 
@@ -346,7 +346,7 @@ m1 <- brm(
     max_treedepth = 20)
 )
 
-pp_check(m1, ndraws = 1000)
+#pp_check(m1, ndraws = 1000)
 m1
 #plot(m1)
 ```
@@ -366,7 +366,7 @@ theme_classic()
 
 plot1 <- ggplot(m1_posterior) +
 geom_histogram(aes(prior_b), fill="darkblue", color="black",alpha=0.6, bins = 30) +
-geom_histogram(aes(b_Intercept), fill="darkgreen", color="black",alpha=0.6, bins = 30)+
+geom_histogram(aes(b_v1_obs_matched), fill="darkgreen", color="black",alpha=0.6, bins = 30)+
 xlab('Beta') +
 labs(title="v1: Prior-posterior update check of the effect size") +
 theme_classic()
@@ -448,7 +448,7 @@ grid.arrange(plot7, plot8, plot9, plot10, plot1_I)
 ```{r}
 m1_noise <- update(m1, newdata = train_noise)
 
-pp_check(m1_noise, ndraws=1000)
+#pp_check(m1_noise, ndraws=1000)
 m1_noise
 
 ```
@@ -561,7 +561,7 @@ test <- inv_logit_scaled(posterior_linpred(m1, newdata = test_inf_s, summary = F
 train_n <- inv_logit_scaled(posterior_linpred(m1_noise, summary = F))
 test_n <- inv_logit_scaled(posterior_linpred(m1_noise, newdata = test_noise_s, summary = F, allow_new_levels = T))
 
-fun_if <- function(x) {ifelse(x > 0.5, "HC", "SZ")}
+fun_if <- function(x) {ifelse(x > 0.5, "SZ", "HC")}
 
 ```
 
@@ -599,6 +599,11 @@ for (i in seq(1000)) {
   perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "informed" & perf_prob$type=="test"] <- (accuracy(test_inf_s, truth = group, estimate = pred)[, ".estimate"])
   perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "noise" & perf_prob$type=="training"] <- accuracy(train_noise, truth = group, estimate = pred)[, ".estimate"]
   perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "noise" & perf_prob$type=="test"] <- (accuracy(test_noise_s, truth = group, estimate = pred)[, ".estimate"])
+  
+  perf_prob$kap[perf_prob$sample==i & perf_prob$data == "informed" & perf_prob$type=="training"] <- kap(train_inf, truth = group, estimate = pred)[, ".estimate"]
+  perf_prob$kap[perf_prob$sample==i & perf_prob$data == "informed" & perf_prob$type=="test"] <- (kap(test_inf_s, truth = group, estimate = pred)[, ".estimate"])
+  perf_prob$kap[perf_prob$sample==i & perf_prob$data == "noise" & perf_prob$type=="training"] <- kap(train_noise, truth = group, estimate = pred)[, ".estimate"]
+  perf_prob$kap[perf_prob$sample==i & perf_prob$data == "noise" & perf_prob$type=="test"] <- (kap(test_noise_s, truth = group, estimate = pred)[, ".estimate"])
 
 }
 
@@ -796,17 +801,16 @@ importance <- varImp(model, scale=FALSE)
 print(importance)
 # plot importance
 plot(importance)
-
 ```
 
 ```{r}
-relevant_cols <- t %>% dplyr::select(Harmonicity_SD, HMPDD0_SD, Clarity_Mean, MCEP2_Mean, CreakProbability_SD, F0_SD_Praat, Pitch_IQR, MCEP23_Mean, MCEP8_Median, Intensity_SD_Praat)
+relevant_cols <- t %>% dplyr::select(Harmonicity_SD, MCEP2_Mean,Clarity_Mean, HMPDD0_SD, MCEP20_Median,  MCEP8_Mean, CreakProbability_SD, F0_SD_Praat, Pitch_IQR, TurnNumMin_Cova)
 
 train_select <- cbind(train_factor, relevant_cols)
 ```
 
 ```{r}
-f1_real <- bf(Diagnosis ~ 1 + Harmonicity_SD+ HMPDD0_SD+ Clarity_Mean+ MCEP2_Mean+ CreakProbability_SD+ F0_SD_Praat+ Pitch_IQR+ MCEP23_Mean+ MCEP8_Median+ Intensity_SD_Praat + (1+Trial|NewID))
+f1_real <- bf(Diagnosis ~ 1 + Harmonicity_SD+ MCEP2_Mean+Clarity_Mean+ HMPDD0_SD+ MCEP20_Median+  MCEP8_Mean+ CreakProbability_SD+ F0_SD_Praat+ Pitch_IQR+ TurnNumMin_Cova + (1+Trial|NewID))
 ```
 
 
@@ -872,4 +876,64 @@ m1_real
 #plot(m1)
 ```
 
+
+#Predictions from every posterior sample
+```{r}
+perf_prob <-  tibble(expand.grid(
+  sample = seq(1000),
+  type = c("training", "test"))
+)
+
+train_r <- inv_logit_scaled(posterior_linpred(m1_real, summary = F))
+test_r <- inv_logit_scaled(posterior_linpred(m1_real, newdata = test_real, summary = F, allow_new_levels = T))
+
+fun_if <- function(x) {ifelse(x > 0.5, "SCZ", "CT")}
+
+```
+
+```{r}
+train_select$av_pred <- predict(m1_real)
+```
+
+
+```{r}
+train_r <- as_tibble(train_r)
+test_r <- as_tibble(test_r)
+ 
+train_r <- train_r %>% apply(2, fun_if) %>% as_tibble()
+test_r <- test_r %>% apply(2, fun_if) %>% as_tibble()
+
+train_r[sapply(train_r, is.character)] <- lapply(train_r[sapply(train_r, is.character)], as.factor)
+test_r[sapply(test_r, is.character)] <- lapply(test_r[sapply(test_r, is.character)], as.factor)
+
+for (i in seq(1000)) {
+  train_select$pred <- c(train_r[i,])
+  train_select <- unnest(train_select, pred)
+  train_select$pred <- factor(train_select$pred, levels=c('CT', 'SCZ'))
+  test_real$pred <- c(test_r[i,])
+  test_real <- unnest(test_real, pred)
+  test_real$pred <- factor(test_real$pred, levels=c('CT', 'SCZ'))
+
+  perf_prob$accuracy[perf_prob$sample==i & perf_prob$type=="training"] <- accuracy(train_select, truth = Diagnosis, estimate = pred)[, ".estimate"]
+  perf_prob$accuracy[perf_prob$sample==i &  perf_prob$type=="test"] <- (accuracy(test_real, truth = Diagnosis, estimate = pred)[, ".estimate"])
+  
+  perf_prob$kap[perf_prob$sample==i & perf_prob$type=="training"] <- kap(train_select, truth = Diagnosis, estimate = pred)[, ".estimate"]
+  perf_prob$kap[perf_prob$sample==i &  perf_prob$type=="test"] <- (kap(test_real, truth = Diagnosis, estimate = pred)[, ".estimate"])
+
+}
+
+```
+
+# Plotting the predictions w. uncertainty
+```{r}
+perf_prob <- unnest(perf_prob, c(accuracy,kap))
+
+ggplot(perf_prob, aes(y=as.numeric(accuracy) , x=type, color=type)) +
+  geom_point(data = perf_prob)+
+  scale_y_continuous()
+
+ggplot(perf_prob, aes(y=as.numeric(kap) , x=type, color=type)) +
+  geom_point(data = perf_prob)+
+  scale_y_continuous() 
+```
 
