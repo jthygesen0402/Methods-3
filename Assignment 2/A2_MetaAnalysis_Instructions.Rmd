@@ -120,14 +120,13 @@ m1 <-brm(
   family = gaussian,
   prior = p1,
   sample_prior = T,
-  backend = "cmdstanr",
-  threads = threading(2),
+  #backend = "cmdstanr",
+  #threads = threading(2),
   chains = 2,
   cores = 2,
   control = list(
     adapt_delta = 0.9,
-    max_treedepth = 20),
-  stan_model_args = list(stanc_options=list("01"))
+    max_treedepth = 20)
 )
 ```
 
@@ -168,8 +167,9 @@ theme_classic()
 grid.arrange(plot1,plot2)
 ```
 
+
 ```{r}
-m1_pb <- update(m1, newdata = subset(d, published==1))
+m1_pb <- update(m1, newdata = subset(d, published==1)) 
 
 
 print(m1_pb)
@@ -178,6 +178,7 @@ print(m1_pb)
 pp_check(m1_pb,ndraws = 1000)
 pp_check(m1, ndraws = 1000) #without publication bias
 ```
+
 
 
 2. What is the current evidence for distinctive vocal patterns in schizophrenia? 
@@ -223,8 +224,8 @@ real_data_pitch <- real_data_pitch %>% mutate(StudyID = seq(1:15))
 Describing the data
 ```{r}
 d_df <- real_data_pitch %>% 
-  select(SAMPLE_SIZE_SZ,SAMPLE_SIZE_HC, Total, StudyID, FEMALE_SZ, FEMALE_HC, MALE_SZ,MALE_HC) %>% rename(SZ = SAMPLE_SIZE_SZ, 
-         HC=SAMPLE_SIZE_HC) 
+         HC=SAMPLE_SIZE_H  select(SAMPLE_SIZE_SZ,SAMPLE_SIZE_HC, Total, StudyID, FEMALE_SZ, FEMALE_HC, MALE_SZ,MALE_HC) %>% rename(SZ = SAMPLE_SIZE_SZ, 
+C) 
 
 #Barplot of number of participants
 
@@ -273,8 +274,7 @@ fem <- d_df %>% select(female, male,StudyID, Total)
 fem <- melt(fem, id.vars="StudyID")
 ```
 
-<<<<<<< HEAD
-=======
+
 ```{r}
 #plotting gender by group
 ggplot() + 
@@ -422,14 +422,14 @@ m1_real <-brm(
   family = gaussian,
   prior = p1,
   sample_prior = T,
-  backend = "cmdstanr",
-  threads = threading(2),
+  #backend = "cmdstanr",
+  #threads = threading(2),
   chains = 2,
   cores = 2,
   control = list(
     adapt_delta = 0.9,
     max_treedepth = 20),
-  stan_model_args = list(stanc_options=list("01"))
+  #stan_model_args = list(stanc_options=list("01"))
 )
 
 print(m1_real)
@@ -461,4 +461,19 @@ theme_classic()
 
 grid.arrange(plot1_real,plot2_real)
 ```
+
+
+#
+```{r}
+#Broadening our priors after inspecting the prior posterior update checks
+p2 <- c(
+  prior(normal(0,0.3),class=Intercept),
+  prior(normal(0,0.7),class=sd))
+```
+
+```{r}
+#Updating our model with the new broader priors
+m1_real <- update(m1_real, prior=p2)
+```
+
 

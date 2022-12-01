@@ -338,10 +338,11 @@ return(q_estimates)
 
 
 ```{r}
-#Making a nested df of all the wanted samole sizes
-
+#Making a nested df of all the wanted sample sizes
 all_samples <- tibble(samplesizes=samples) %>% mutate(m=map(samplesizes, power)) %>% unnest(m)
+```
 
+```{r}
 #plotting all the sample sizes together
 pp_plots <- all_samples %>%  
   ggplot(aes(x = seed, y = mean, ymin = Q3_u   , ymax = Q1_l)) +
@@ -353,6 +354,11 @@ pp_plots <- all_samples %>%
     ggtitle("Differences between ASD and TD across different sample sizes")
   
 pp_plots  
+
+  
+pp_plots
+      
+    
 ```
 
 ```{r}
