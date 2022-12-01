@@ -366,7 +366,7 @@ theme_classic()
 
 plot1 <- ggplot(m1_posterior) +
 geom_histogram(aes(prior_b), fill="darkblue", color="black",alpha=0.6, bins = 30) +
-geom_histogram(aes(b_Intercept), fill="darkgreen", color="black",alpha=0.6, bins = 30)+
+geom_histogram(aes(b_v1_obs_matched), fill="darkgreen", color="black",alpha=0.6, bins = 30)+
 xlab('Beta') +
 labs(title="v1: Prior-posterior update check of the effect size") +
 theme_classic()
@@ -599,6 +599,11 @@ for (i in seq(1000)) {
   perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "informed" & perf_prob$type=="test"] <- (accuracy(test_inf_s, truth = group, estimate = pred)[, ".estimate"])
   perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "noise" & perf_prob$type=="training"] <- accuracy(train_noise, truth = group, estimate = pred)[, ".estimate"]
   perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "noise" & perf_prob$type=="test"] <- (accuracy(test_noise_s, truth = group, estimate = pred)[, ".estimate"])
+  
+  perf_prob$kap[perf_prob$sample==i & perf_prob$data == "informed" & perf_prob$type=="training"] <- kap(train_inf, truth = group, estimate = pred)[, ".estimate"]
+  perf_prob$kap[perf_prob$sample==i & perf_prob$data == "informed" & perf_prob$type=="test"] <- (kap(test_inf_s, truth = group, estimate = pred)[, ".estimate"])
+  perf_prob$kap[perf_prob$sample==i & perf_prob$data == "noise" & perf_prob$type=="training"] <- kap(train_noise, truth = group, estimate = pred)[, ".estimate"]
+  perf_prob$kap[perf_prob$sample==i & perf_prob$data == "noise" & perf_prob$type=="test"] <- (kap(test_noise_s, truth = group, estimate = pred)[, ".estimate"])
 
 }
 
@@ -906,6 +911,9 @@ for (i in seq(1000)) {
 
   perf_prob$accuracy[perf_prob$sample==i & perf_prob$type=="training"] <- accuracy(train_select, truth = Diagnosis, estimate = pred)[, ".estimate"]
   perf_prob$accuracy[perf_prob$sample==i &  perf_prob$type=="test"] <- (accuracy(test_real, truth = Diagnosis, estimate = pred)[, ".estimate"])
+  
+  perf_prob$kap[perf_prob$sample==i & perf_prob$type=="training"] <- kap(train_select, truth = Diagnosis, estimate = pred)[, ".estimate"]
+  perf_prob$kap[perf_prob$sample==i &  perf_prob$type=="test"] <- (kap(test_real, truth = Diagnosis, estimate = pred)[, ".estimate"])
 
 }
 
@@ -913,9 +921,14 @@ for (i in seq(1000)) {
 
 # Plotting the predictions w. uncertainty
 ```{r}
-perf_prob <- unnest(perf_prob, accuracy)
+perf_prob <- unnest(perf_prob, c(accuracy,kap))
 
 ggplot(perf_prob, aes(y=as.numeric(accuracy) , x=type, color=type)) +
+  geom_point(data = perf_prob)+
+  scale_y_continuous() + 
+  facet_wrap(~ data)
+
+ggplot(perf_prob, aes(y=as.numeric(kap) , x=type, color=type)) +
   geom_point(data = perf_prob)+
   scale_y_continuous() + 
   facet_wrap(~ data)
