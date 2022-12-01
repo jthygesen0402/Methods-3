@@ -239,7 +239,6 @@ test_inf_s<- bake(recipe_inf, new_data = test_inf)
 test_inf_s$ID <- test_inf$ID
 
 ```
-
 ## Data budgetting and preprocessing on the *noise* data set
 
 ```{r}
@@ -542,7 +541,8 @@ theme_classic()
 ```{r}
 grid.arrange(plot1_noise, plot2_noise, plot3_noise, plot4_noise, plot5_noise, plot6_noise)
 grid.arrange(plot7_noise, plot8_noise, plot9_noise, plot10_noise, plot1_noise_I)
-```
+``
+
 
 
 #Predictions from every posterior sample
@@ -566,6 +566,25 @@ fun_if <- function(x) {ifelse(x > 0.5, "HC", "SZ")}
 ```
 
 ```{r}
+for (i in seq(1000)){
+  train_inf$predictions <- as.factor(ifelse(train[i,] > 0.5, "HC", "SZ")) %>%  factor(levels=c('SZ', 'HC'))
+  test_inf_s$predictions <- as.factor(ifelse(test[i,] > 0.5, "HC", "SZ")) %>% factor(levels=c('SZ', 'HC'))
+  
+    train_noise$predictions <- as.factor(ifelse(train_n[i,] > 0.5, "HC", "SZ")) %>%  factor(levels=c('SZ', 'HC'))
+  test_noise_s$predictions <- as.factor(ifelse(test_n[i,] > 0.5, "HC", "SZ")) %>% factor(levels=c('SZ', 'HC'))
+  
+  
+  
+  perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "informed" & perf_prob$type=="training"] <- accuracy(train_inf, truth = group, estimate = predictions)[, ".estimate"]
+  
+   perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "informed" & perf_prob$type=="test"] <- yardstick::accuracy(test_inf_s, truth = group, estimate = predictions)[, ".estimate"]
+   
+    perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "noise" & perf_prob$type=="training"] <- accuracy(train_noise, truth = group, estimate = predictions)[, ".estimate"]
+    
+     perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "noise" & perf_prob$type=="test"] <- yardstick::accuracy(test_noise_s, truth = group, estimate = predictions)[, ".estimate"]
+
+
+
 train_inf_pred <- as_tibble(train)
 test_inf_s_pred <- as_tibble(test)
 train_noise_pred <- as_tibble(train_n)
@@ -599,6 +618,7 @@ for (i in seq(1000)) {
   perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "informed" & perf_prob$type=="test"] <- (accuracy(test_inf_s, truth = group, estimate = pred)[, ".estimate"])
   perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "noise" & perf_prob$type=="training"] <- accuracy(train_noise, truth = group, estimate = pred)[, ".estimate"]
   perf_prob$accuracy[perf_prob$sample==i & perf_prob$data == "noise" & perf_prob$type=="test"] <- (accuracy(test_noise_s, truth = group, estimate = pred)[, ".estimate"])
+
 }
 
 ```
@@ -616,6 +636,7 @@ ggplot(perf_prob, aes(y=as.numeric(accuracy) , x=type, color=type)) +
 ```
 
 # Feature importance
+
 
 ```{r}
 train_trees <- train_inf %>% mutate(ID = NULL,
@@ -706,16 +727,6 @@ am_i_really_important_2 %>% model_parts() %>% plot() #RandomForest
 
 ```
 
-^^ Global importance - generally, which are the features that matter the most?
-
-
-### Discuss why our noisy variables are "more" important and why we don't take them out
-
-
-
-
-
-
 
 Part III
 
@@ -741,11 +752,6 @@ real_data <- real_data %>%
     Diagnosis = as.factor(Diagnosis)
   )
 ```
-
-stratify
-cvms - balancing data, nice on continuous variables
-
-scale/standardize
 
 
 #Data budgetting
@@ -784,50 +790,25 @@ test_real <- bake(part_rec, new_data = test_part)
 ```
 
 
+#Variable selection by correlation
 ```{r}
-plot_correlation(train_real)
-```
+train_num <- select_if(train_real, is.numeric)
+train_factor <- select_if(train_real, is.factor)
 
-```{r}
-control <- rfeControl(functions = rfFuncs , 
-                      method = "repeatedcv",
-                      verbose = F)
+#Finding the highly correlated variables. Setting the threshold to 0.65
+cutoffs <- findCorrelation(cor(train_num), cutoff = 0.65)
 
-y_train <- train_real$Diagnosis
+new_df <- train_num[,-cutoffs]
+t <- cbind(new_df, train_factor)
 
-x_train <-train_real[,-c(395,396)] %>% as.data.frame()
+plot_correlation(t)
 
-
-
-rfe_1 <- rfe(x = x_train,
-              y = as.factor(unlist(y_train)),
-             sizes = c(1:396),
-             repeats = 5, 
-             number = 10,
-             rfeControl = control)
 ```
 
 
 ```{r}
-# define the control using a random forest selection function
-control <- rfeControl(functions=rfFuncs, method="cv", number=10)
-# run the RFE algorithm
-results <- rfe(train_real[-which(names(train_real) == "Diagnosis")], train_real["Diagnosis"], sizes=c(1:8), rfeControl=control)
-# summarize the results
-print(results)
-# list the chosen features
-predictors(results)
-# plot the results
-plot(results, type=c("g", "o"))
 
-train_real[-which(names(train_real) == "Diagnosis")]
-```
-
-
-#
-```{r}
-
-pca_train_ <-  recipe(Diagnosis ~., data = train_part) %>% 
+pca_train_ <-  recipe(Diagnosis ~., data = t) %>% 
   update_role(NewID, Trial, Gender,  new_role = "id") %>%
   step_scale(all_numeric()) %>%
   step_center(all_numeric()) %>%
@@ -835,15 +816,9 @@ pca_train_ <-  recipe(Diagnosis ~., data = train_part) %>%
 
 pca_train_2 <-recipes::prep(pca_train_, retain = T)
 
-
-
-
-
-
 pca_train_2 <- tidy(pca_train_2, 3)
 
-low <- pca_train_2 %>% filter(value < 0.01 | value > -0.01)
-high <- pca_train_2 %>% filter(value >0.01 | value < -0.01)
+
 
 pca_train_2 %>%
   filter(component %in% paste0("PC", 1:5)) %>%
@@ -852,9 +827,14 @@ pca_train_2 %>%
   geom_col(show.legend = FALSE) +
   facet_wrap(~component, nrow = 1) +
   labs(y = NULL)
-```
 
 
+pca1 <- pca_train_2 %>% filter(component == "PC1") %>% filter(value < 0.05) 
+
+terms <- pca1$terms
+t_new <- t[,!(names(t) %in% terms)] 
+
+t_new$.partitions <- NULL
 
 ```{r}
 LogisticRegression <- logistic_reg() %>%
@@ -869,6 +849,7 @@ dd <- explain_tidymodels(LogisticRegression,
 dd <- model_parts(dd) 
 plot(dd)
 caret::findLinearCombos(real_sub_data)
+
 ```
 
 ```{r}
@@ -892,4 +873,9 @@ am_i_important %>% model_parts() %>% plot() #SVM
 
 
 
+```{r}
+n <- names(t_new)
+n <- n[-c(31,33)]
+n
 
+```
