@@ -58,10 +58,10 @@ people <- 200
 trials <- 10
 
 EffectsMeans_inform <- c(0.25,-0.55,-0.75,-1.26,0.05,1.89,0,0,0,0)
-EffectsSD_inform <- c(0.5, 0.29, 0.39,0.63,0.59,0.62,1,1,1,1)
+EffectsSD_inform <- c(0.5, 0.29, 0.39,0.63,0.59,0.62,0.2,0.2,0.2,0.2)
 
 EffectsMeans_noise <- rep(0,10)
-EffectsSD_noise <- rep(1,10)
+EffectsSD_noise <- rep(0.2,10)
 
 TrialSD <- 0.5
 Error <- 0.2
@@ -324,7 +324,7 @@ m1_prior
 
 
 # Running Prior predictive check
-pp_check(m1_prior, ndraws =1000)
+#pp_check(m1_prior, ndraws =1000)
 ```
 
 
@@ -346,7 +346,7 @@ m1 <- brm(
     max_treedepth = 20)
 )
 
-pp_check(m1, ndraws = 1000)
+#pp_check(m1, ndraws = 1000)
 m1
 #plot(m1)
 ```
@@ -448,7 +448,7 @@ grid.arrange(plot7, plot8, plot9, plot10, plot1_I)
 ```{r}
 m1_noise <- update(m1, newdata = train_noise)
 
-pp_check(m1_noise, ndraws=1000)
+#pp_check(m1_noise, ndraws=1000)
 m1_noise
 
 ```
@@ -804,13 +804,13 @@ plot(importance)
 ```
 
 ```{r}
-relevant_cols <- t %>% dplyr::select(Harmonicity_SD, MCEP2_Mean,Clarity_Mean, HMPDD0_SD, MCEP11_Median,  MCEP8_Mean, CreakProbability_SD, F0_SD_Praat, Pitch_IQR, TurnNumMin_Cova)
+relevant_cols <- t %>% dplyr::select(Harmonicity_SD, MCEP2_Mean,Clarity_Mean, HMPDD0_SD, MCEP20_Median,  MCEP8_Mean, CreakProbability_SD, F0_SD_Praat, Pitch_IQR, TurnNumMin_Cova)
 
 train_select <- cbind(train_factor, relevant_cols)
 ```
 
 ```{r}
-f1_real <- bf(Diagnosis ~ 1 + Harmonicity_SD+ MCEP2_Mean+Clarity_Mean+ HMPDD0_SD+ MCEP11_Median+  MCEP8_Mean+ CreakProbability_SD+ F0_SD_Praat+ Pitch_IQR+ TurnNumMin_Cova + (1+Trial|NewID))
+f1_real <- bf(Diagnosis ~ 1 + Harmonicity_SD+ MCEP2_Mean+Clarity_Mean+ HMPDD0_SD+ MCEP20_Median+  MCEP8_Mean+ CreakProbability_SD+ F0_SD_Praat+ Pitch_IQR+ TurnNumMin_Cova + (1+Trial|NewID))
 ```
 
 
