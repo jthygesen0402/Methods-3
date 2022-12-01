@@ -22,7 +22,7 @@ The report for the exam, thus, consists of the answer to all the following promp
 Remember: plots are very very important to communicate your process and results.
 
 ```{r}
-pacman::p_load(tidyverse,purrr, brms, cmdstanr, bayesplot, rstanarm, viridis, gridExtra, RColorBrewer, reshape2, tidymodels, yardstick, corrplot, DALEX, DALEXtra, randomForest, xgboost, kernlab, caret, cvms, groupdata2, DataExplorer, klaR)
+pacman::p_load(tidyverse,purrr, brms, cmdstanr, bayesplot, rstanarm, viridis, gridExtra, RColorBrewer, reshape2, tidymodels, yardstick, corrplot, DALEX, DALEXtra, randomForest, xgboost, kernlab, caret, cvms, groupdata2, DataExplorer, klaR, dplyr, mlbench)
 
 
 set.seed(3)
@@ -33,16 +33,6 @@ set.seed(3)
 color_scheme_set(scheme = "teal")
 ```
 
-______________________________
-
-*update_role* 
-- assign the role of the column 
-update_role(ID, trail, new_role ="second level")
-
-Useful in PCA and when making our recipe
-
-
-__________________________________
 
 
 
@@ -118,7 +108,7 @@ sim_d <- merge(sim_d, pairs)
 matched_data <- sim_d %>% 
   rowwise %>%  
   mutate(across(ends_with("_obs"), ~if_else(group == "SZ", (.x/2), -(.x/2)), .names ="{.col}_matched")) %>%
-  select(ID, trial, group, ends_with("_matched"))
+  dplyr::select(ID, trial, group, ends_with("_matched"))
 
 ```
 
@@ -153,7 +143,7 @@ sim_d_noise <- merge(sim_d_noise, pairs)
 matched_noise<- sim_d_noise %>% 
   rowwise %>%  
   mutate(across(ends_with("_obs"), ~if_else(group == "SZ", (.x/2), -(.x/2)), .names ="{.col}_matched")) %>%
-  select(ID, trial, group, ends_with("_matched"))
+  dplyr::select(ID, trial, group, ends_with("_matched"))
 
 ```
 
@@ -240,13 +230,9 @@ test_inf_s$ID <- test_inf$ID
 
 ```
 
-<<<<<<< HEAD
-
 
 #Choosing a classification algorithm - Logistic Regression
 
-=======
->>>>>>> 2a0c4ce0e328077bd24c1ff011e4f86fddd70083
 ## Data budgetting and preprocessing on the *noise* data set
 
 ```{r}
@@ -540,7 +526,7 @@ plot1_noise_I <- ggplot(m1_posterior_noise) +
 geom_histogram(aes(prior_Intercept), fill="purple", color="black",alpha=0.6, bins = 30) +
 geom_histogram(aes(b_Intercept), fill="green", color="black",alpha=0.6, bins = 30)+
 xlab('Intercept') +
-labs(title="v1: Prior-posterior update check of the noise effect size") +
+labs(title="v1: Prior-posterior update check on the intercept of the noise effect size") +
 theme_classic()
 
 ```
@@ -610,7 +596,7 @@ brms::conditional_effects(m1_noise)
 # Predictions on the test data - both informed and noise
 
 ```{r}
-<<<<<<< HEAD
+
 #inf
 
 test_inf_s$av_pred_perc <- predict(m1,newdata = test_inf_s, allow_new_levels=T)[,1]
@@ -775,22 +761,6 @@ ggplot(perf_prob, aes(y=as.numeric(accuracy) , x=type, color=type)) +
 ```
 
 
-```{r}
-
-```
-
-
-These are just the average predictions. And our model shows us that it can find predictions on noise, which is problematic. . But this is without including uncertainty. 
-
-We need to generate predictions of every posterior samples of our model and plot the full distribution of the performance/accuracy. 
-
-
-#
-
-
-
-
-
 
 # Feature importance
 
@@ -883,14 +853,6 @@ am_i_really_important %>% model_parts() %>% plot() #SVM
 am_i_really_important_2 %>% model_parts() %>% plot() #RandomForest
 
 ```
-_______
-^^ Global importance - generally, which are the features that matter the most?
-
-
-### Discuss why our noisy variables are "more" important and why we don't take them out
-____
-
-
 
 
 
@@ -923,7 +885,6 @@ real_data <- real_data %>%
 
 #Data budgetting
 ```{r}
-
 partition <- partition(
   real_data, 
   p = 0.8, 
@@ -957,7 +918,6 @@ test_real <- bake(part_rec, new_data = test_part)
 ```
 
 
-
 #Variable selection by correlation
 ```{r}
 train_num <- select_if(train_real, is.numeric)
@@ -974,7 +934,7 @@ plot_correlation(t)
 ```
 
 
-#PCA
+#PCA - feature selcetion inception
 ```{r}
 
 pca_train_ <-  recipe(Diagnosis ~., data = t) %>% 
@@ -998,7 +958,7 @@ pca_train_2 %>%
   labs(y = NULL)
 
 
-pca1 <- pca_train_2 %>% filter(component == "PC1") %>% filter(value < 0.05)
+pca1 <- pca_train_2 %>% filter(component == "PC1") %>% filter(value < 0.05) 
 
 terms <- pca1$terms
 t_new <- t[,!(names(t) %in% terms)] 
@@ -1012,43 +972,5 @@ t_new$.partitions <- NULL
 n <- names(t_new)
 n <- n[-c(31,33)]
 n
+
 ```
-
-```{r}
-f1_real <- bf(Diagnosis ~  Intensity_Mean_Praat+ Intensity_SD_Praat+PSP_SD + Rd_Mean + Rd_MAD + MCEP0_IQR + MCEP1_IQR"            "MCEP2_Mean"           "MCEP5_IQR"           
-[10] "MCEP7_Mean"           "MCEP9_Mean"           "MCEP9_IQR"           
-[13] "MCEP10_Median"        "MCEP10_IQR"           "MCEP11_IQR"          
-[16] "MCEP12_IQR"           "MCEP13_Mean"          "MCEP14_IQR"          
-[19] "MCEP15_Mean"          "MCEP17_Mean"          "MCEP19_Median"       
-[22] "MCEP19_IQR"           "MCEP22_Median"        "HMPDD0_SD"           
-[25] "HMPDD6_IQR"           "HMPDD7_IQR"           "Harmonicity_SD"      
-[28] "Clarity_Mean"         "MeanTurnDur_Cova"     "MeanTurnDur_Praat"   
-[31] "Gender" + (1+Trial|NewID))
-```
-
-
-```{r}
-#Fitting the model
-m1_real <-brm(
-  f1_real,
-  data=t_new,
-  family = bernoulli,
-  prior = p1,
-  sample_prior = T,
-  #backend = "cmdstanr",
-  #threads = threading(2),
-  chains = 2,
-  cores = 2,
-  control = list(
-    adapt_delta = 0.9,
-    max_treedepth = 20),
-  stan_model_args = list(stanc_options=list("01"))
-)
-
-print(m1_real)
-
-pp_check(m1_real, ndraws = 1000)
-```
-
-
-
