@@ -616,6 +616,13 @@ perf_prob <- unnest(perf_prob, accuracy)
 ggplot(perf_prob, aes(y=as.numeric(accuracy) , x=type, color=type)) +
   geom_point(data = perf_prob)+
   scale_y_continuous() + 
+  ggtitle("Model accuracy")+
+  facet_wrap(~ data)
+
+ggplot(perf_prob, aes(y=as.numeric(kap) , x=type, color=type)) +
+  geom_point(data = perf_prob)+
+  scale_y_continuous() + 
+  ggtitle("Model kappa")+
   facet_wrap(~ data)
 ```
 
@@ -687,7 +694,7 @@ informed_SVM_test <- svm_rbf()%>%
 am_i_really_important <- explain_tidymodels(informed_SVM, 
                                      data = test_inf_s, 
                                      y= as.numeric(test_inf_s$group)-1,
-                                     label= "SVM", 
+                                     label= "SVM, noise", 
                                      verbose = FALSE)
 
 
@@ -702,7 +709,7 @@ informed_trees_test <- rand_forest()%>%
 am_i_really_important_2 <- explain_tidymodels(informed_trees, 
                                      data = test_inf_s, 
                                      y= as.numeric(test_inf_s$group)-1,
-                                     label= "Random Forest", 
+                                     label= "Random Forest, noise", 
                                      verbose = FALSE)
 
 
@@ -876,6 +883,97 @@ m1_real
 #plot(m1)
 ```
 
+#Prior predictive update checks for the informed data
+
+```{r}
+m1_real_posterior <- as_draws_df(m1_real)
+
+#The prior-posterior update plot for the intercept beta:
+p_real <- ggplot(m1_real_posterior) +
+geom_histogram(aes(prior_Intercept), fill="darkblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(b_Intercept), fill="red", color="black",alpha=0.6, bins = 30)+
+xlab('Intercept') +
+labs(title="PPU-check of the intercept") +
+theme_classic()
+
+p_real1 <- ggplot(m1_real_posterior)+
+geom_histogram(aes(prior_b), fill="darkblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(b_Harmonicity_SD), fill="red", color="black",alpha=0.6, bins = 30)+
+xlab('Beta') +
+labs(title="Harmonicity_SD: PPU-check of the slope") +
+theme_classic()
+
+p_real2 <- ggplot(m1_real_posterior) +
+geom_histogram(aes(prior_b), fill="darkblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(b_MCEP2_Mean), fill="red", color="black",alpha=0.6, bins = 30)+
+xlab('Beta') +
+labs(title="MCEP2_Mean: PPU-check of the slope") +
+theme_classic()
+
+p_real3 <- ggplot(m1_real_posterior) +
+geom_histogram(aes(prior_b), fill="darkblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(b_Clarity_Mean), fill="red", color="black",alpha=0.6, bins = 30)+
+xlab('Beta') +
+labs(title="Clarity_Mean:PPU-check of the slope") +
+theme_classic()
+
+p_real4 <- ggplot(m1_real_posterior) +
+geom_histogram(aes(prior_b), fill="darkblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(b_HMPDD0_SD), fill="red", color="black",alpha=0.6, bins = 30)+
+xlab('Beta') +
+labs(title="HMPDD0_SD : PPU-check of the slope") +
+theme_classic()
+
+p_real5 <- ggplot(m1_real_posterior) +
+geom_histogram(aes(prior_b), fill="darkblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(b_MCEP20_Median), fill="red", color="black",alpha=0.6, bins = 30)+
+xlab('Beta') +
+labs(title="MCEP20_Median: PPU-check of the slope") +
+theme_classic()
+
+p_real6 <- ggplot(m1_real_posterior) +
+geom_histogram(aes(prior_b), fill="darkblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(b_MCEP8_Mean), fill="red", color="black",alpha=0.6, bins = 30)+
+xlab('Beta') +
+labs(title="MCEP8_Mean: PPU-check of the slope") +
+theme_classic()
+
+p_real7 <- ggplot(m1_real_posterior) +
+geom_histogram(aes(prior_b), fill="darkblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(b_CreakProbability_SD), fill="red", color="black",alpha=0.6, bins = 30)+
+xlab('Beta') +
+labs(title="CreakProbability_SD: PPU-check of the slope") +
+theme_classic()
+
+p_real8 <- ggplot(m1_real_posterior) +
+geom_histogram(aes(prior_b), fill="darkblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(b_F0_SD_Praat), fill="red", color="black",alpha=0.6, bins = 30)+
+xlab('Beta') +
+labs(title="F0_SD_Praat: PPU-checkof the slope") +
+theme_classic()
+
+p_real9 <- ggplot(m1_real_posterior) +
+geom_histogram(aes(prior_b), fill="darkblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(b_Pitch_IQR), fill="red", color="black",alpha=0.6, bins = 30)+
+xlab('Beta') +
+labs(title="Pitch_IQR: PPU-check of the slope") +
+theme_classic()
+
+p_real10 <- ggplot(m1_real_posterior) +
+geom_histogram(aes(prior_b), fill="darkblue", color="black",alpha=0.6, bins = 30) +
+geom_histogram(aes(b_TurnNumMin_Cova), fill="red", color="black",alpha=0.6, bins = 30)+
+xlab('Beta') +
+labs(title="TurnNumMin_Cova: PPU-check of the slope") +
+theme_classic()
+
+```
+
+```{r}
+grid.arrange(p_real, p_real1, p_real2, p_real3, p_real4, p_real5)
+grid.arrange(p_real6, p_real7, p_real8, p_real9, p_real10)
+
+```
+
 
 #Predictions from every posterior sample
 ```{r}
@@ -930,10 +1028,12 @@ perf_prob <- unnest(perf_prob, c(accuracy,kap))
 
 ggplot(perf_prob, aes(y=as.numeric(accuracy) , x=type, color=type)) +
   geom_point(data = perf_prob)+
-  scale_y_continuous()
+  scale_y_continuous()+
+  ggtitle("Model accuracy")
 
 ggplot(perf_prob, aes(y=as.numeric(kap) , x=type, color=type)) +
   geom_point(data = perf_prob)+
-  scale_y_continuous() 
+  scale_y_continuous()+
+  ggtitle("Model kappa")
 ```
 
