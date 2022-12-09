@@ -474,6 +474,7 @@ p2 <- c(
 ```{r}
 #Updating our model with the new broader priors
 m1_real <- update(m1_real, prior=p2)
+summary(m1_real)
 ```
 
 
