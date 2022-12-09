@@ -309,14 +309,14 @@ m1_real <-brm(
   family = gaussian,
   prior = p1,
   sample_prior = T,
-  backend = "cmdstanr",
-  threads = threading(2),
+  #backend = "cmdstanr",
+  #threads = threading(2),
   chains = 2,
   cores = 2,
   control = list(
     adapt_delta = 0.9,
     max_treedepth = 20),
-  stan_model_args = list(stanc_options=list("01"))
+  #stan_model_args = list(stanc_options=list("01"))
 )
 
 print(m1_real)
