@@ -180,7 +180,7 @@ MLU_priors <- c(
   brms::prior(normal(0.0,0.20), class = b, coef = "diagnosisTD"),
   brms::prior(normal(0,0.5), class = sd, coef = "Intercept", group = ID),
   brms::prior(normal(0,0.2), class = sd, coef = "visit", group = ID),
-  brms::prior(lkj(1),class="cor"))
+  brms::prior(lkj(10),class="cor"))
 
 
 
