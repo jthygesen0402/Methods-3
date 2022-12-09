@@ -273,8 +273,7 @@ fem <- d_df %>% select(female, male,StudyID, Total)
 fem <- melt(fem, id.vars="StudyID")
 ```
 
-<<<<<<< HEAD
-=======
+
 ```{r}
 #plotting gender by group
 ggplot() + 
@@ -462,3 +461,16 @@ theme_classic()
 grid.arrange(plot1_real,plot2_real)
 ```
 
+
+```{r}
+#Broadening our priors after inspecting the prior posterior update checks
+p2 <- c(
+  prior(normal(0,0.3),class=Intercept),
+  prior(normal(0,0.7),class=sd))
+```
+
+```{r}
+#Updating our model with the new broader priors
+m1_real <- update(m1_real, prior=p2)
+summary(m1_real)
+```
