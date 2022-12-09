@@ -350,6 +350,7 @@ ggplot() +
   scale_fill_discrete_qualitative(palette="Set 2") + geom_hline(aes(yintercept = mean(dt$value))) + ggtitle("Sample sizes of groups by each study")
 ```
 
+```{r}
 #Sample the parameters of interest:
 m1_real_posterior <- as_draws_df(m1_real)
 
@@ -390,8 +391,6 @@ ggplot() +
   geom_bar(data=fem %>% filter(variable != "Total"),
            stat="identity", position="dodge", width=0.5, colour="black",
            aes(x=StudyID, y=value, fill=variable)) + scale_fill_discrete_qualitative(palette="Warm") + ggtitle("Gender by group")
-
->>>>>>> 26beb9ac82c723e6468025d8004ecb9cace23bd9
 ```
 
 ```{r}
