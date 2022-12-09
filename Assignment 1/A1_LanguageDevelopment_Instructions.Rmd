@@ -180,7 +180,7 @@ MLU_priors <- c(
   brms::prior(normal(0.0,0.20), class = b, coef = "diagnosisTD"),
   brms::prior(normal(0,0.5), class = sd, coef = "Intercept", group = ID),
   brms::prior(normal(0,0.2), class = sd, coef = "visit", group = ID),
-  brms::prior(lkj(1),class="cor"))
+  brms::prior(lkj(10),class="cor"))
 
 
 
@@ -199,7 +199,7 @@ MLU_prior_model <-  brm(
 )
 
 #Prior predictive check
-pp_check(MLU_prior_model, ndraws =100) + xlim(c(-1,100)) 
+pp_check(MLU_prior_model, ndraws =100) + xlim(c(-1,75)) 
 ```
 
 
@@ -223,6 +223,7 @@ MLU_2 <- brm(
 
 #Printing the model output
 print(MLU_2)
+
 
 #Posterior predictive check
 pp_check(MLU_2, ndraws = 100)
@@ -388,7 +389,8 @@ all_samples %>% group_by(samplesizes) %>%
 ```{r}
 #Loading in data
 df_real_data <- read_csv("data/data_clean.csv")
-df_real_data <- df_real_data %>%  rename(diagnosis = Diagnosis, 
+
+df_real_data <- df_real_data %>%  dplyr::rename(diagnosis = Diagnosis, 
                                          visit = Visit,
                                          MLU = CHI_MLU,
                                          ID = Child.ID)
@@ -472,6 +474,7 @@ Conditional Effects - simulated data vs. real data
 #plotting this (conditional effect)
 ## Posterior MLU effects averaged across groups
 plot(conditional_effects(real_model), points=T)
+
 plot(conditional_effects(MLU_2), points=T)
 ```
 
@@ -503,7 +506,7 @@ print(mom_model)
 
 
 ```{r}
-#Adding verbalIQ and nonverbalIQ as pedictors
+#Adding verbalIQ and nonverbalIQ as predictors
 f_real3 <- bf(MLU ~ 0 + diagnosis + diagnosis:visit + diagnosis:verbalIQ1 + diagnosis:nonVerbalIQ1 + (1+visit|ID))
 
 verb_model <- brm(
@@ -525,26 +528,3 @@ print(verb_model)
 ```
 
 
-
-
-
-
-## Part 3 - From explanation to prediction ##
-
-N.B. There are several datasets for this exercise, so pay attention to which one you are using!
-
-1. The (training) dataset from last time (the awesome one you produced :-) ).
-2. The (test) datasets on which you can test the models from last time:
-* Demographic and clinical data: https://www.dropbox.com/s/ra99bdvm6fzay3g/demo_test.csv?dl=1
-* Utterance Length data: https://www.dropbox.com/s/uxtqqzl18nwxowq/LU_test.csv?dl=1
-* Word data: https://www.dropbox.com/s/1ces4hv8kh0stov/token_test.csv?dl=1
-
-Relying on the model(s) you trained in part 2 of the exercise, create predictions for the test set and assess how well they do compared to the actual data.
-
-- Discuss the differences in performance of your model in training and testing data. Is the model any good?
-- Let's assume you are a speech therapy clinic. You want to assess whether the kids in your test sample will have a typical (like a TD) development, or they will have a worse one, in which case they should get speech therapy support. What do your predictions tell you about that? Which kids would you provide therapy for? Is the model any good?
-
-```{r}
-
-
-```
